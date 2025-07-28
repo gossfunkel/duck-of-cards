@@ -1,14 +1,14 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32, Vec3
 from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue
-from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode
+from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
 from direct.interval.IntervalGlobal import *
 from direct.interval.LerpInterval import LerpPosInterval
 from enum import Enum
 import simplepbr as spbr 
 
 config_vars = """
-win-size 1000 800
+win-size 1200 800
 show-frame-rate-meter 1
 hardware-animated-vertices true
 basic-shaders-only false
@@ -20,6 +20,44 @@ loadPrcFileData("", config_vars)
 castleHP = 100
 playerGold = 0
 waveNum = 0
+
+class UI():
+	def __init__(self):
+		self.castleHPdisplay = TextNode('castle HP display')
+		self.castleHPdisplay.setText(str(castleHP))
+		self.castleHPdisplay.setFrameColor(0, 0, 1, 1)
+		self.castleHPdisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
+		self.castleTextNP = aspect2d.attachNewNode(self.castleHPdisplay)
+		self.castleTextNP.setScale(0.08)
+		self.castleTextNP.setPos(-1.2,0., 0.9)
+
+		self.waveDisplay = TextNode('wave number display')
+		self.waveDisplay.setText("Wave: " + str(waveNum))
+		self.waveDisplay.setFrameColor(1, 0, 1, 1)
+		self.waveDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
+		self.waveDisplayNP = aspect2d.attachNewNode(self.waveDisplay)
+		self.waveDisplayNP.setScale(0.05)
+		self.waveDisplayNP.setPos(-0.85,0., 0.9)
+
+		self.goldDisplay = TextNode('player gold display')
+		self.goldDisplay.setText("GP: " + str(playerGold))
+		self.goldDisplay.setFrameColor(1, 1, 0, 1)
+		self.goldDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
+		self.goldDisplayNP = aspect2d.attachNewNode(self.goldDisplay)
+		self.goldDisplayNP.setScale(0.05)
+		self.goldDisplayNP.setPos(-0.65,0., 0.9)
+
+	def update(self):
+		# update hp display
+		self.castleHPdisplay.setText(str(castleHP) + "hp")
+		if castleHP < 25:
+			self.castleHPdisplay.setFrameColor(1, 0, 0, 1)
+			# update castle appearance
+		# update wave display
+		self.waveDisplay.setText("Wave: " + str(waveNum))
+		# update player gold points display
+		self.goldDisplay.setText("GP: " + str(playerGold))
+
 
 class PlayerCastle():
 	def __init__(self, sb):
@@ -57,22 +95,22 @@ class DuckOfCards(ShowBase):
 	def __init__(self):
 		ShowBase.__init__(self)
 
+		# disable default mouse camera controls
+		base.disableMouse()
+
 		# initialise pbr for models, and shaders
 		spbr.__init__("Duck of Cards")
 		render.setShaderAuto()
 
 		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.,10.,0.), 2: Vec3(10.,0.,0.), 3: Vec3(0.,-10.,0.), 4: Vec3(-10.,0.,0.)}
+		self.spawner = {1: Vec3(0.,10.,0.), 
+						2: Vec3(10.,0.,0.), 
+						3: Vec3(0.,-10.,0.), 
+						4: Vec3(-10.,0.,0.)}
 
 		# generate UI
-		self.set_background_color(0.6,0.6,1.,1.)
-		self.castleHPdisplay = TextNode('castle HP display')
-		self.castleHPdisplay.setText(str(castleHP))
-		self.castleHPdisplay.setFrameColor(0, 0, 0, 1)
-		self.castleHPdisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
-		self.textNodePath = aspect2d.attachNewNode(self.castleHPdisplay)
-		self.textNodePath.setScale(0.1)
-		self.textNodePath.setPos(-0.95,0., 0.8)
+		self.set_background_color(0.42,0.65,1.,1.)
+		self.ui = UI()
 
 		# create sunlight
 		self.dirLight = DirectionalLight('dirLight')
@@ -82,13 +120,18 @@ class DuckOfCards(ShowBase):
 		self.dirLightNp.setHpr(0,-70,120)
 		render.setLight(self.dirLightNp)
 
-		# initialise the isometric camera
+		# initialise the dimetric camera (26.565deg for square pixels)
 		self.cam.setPos(0.,0.,3.)
-		self.cam.setHpr(-45,-45,0)
+		self.cam.setHpr(-45,-26.565,0)
 		#self.cam.setR(45) 			 # global 45deg roll
 		#self.cam.setY(-45) 		 # global 45deg yaw
 		#self.cam.setR(self.cam, 45) # local  45deg roll
 		self.cam.setPos(self.cam, self.cam.getPos() + Vec3(0.,-12.,-4.))
+		# orthographic lens to commit to isometric-style dimetric view
+		self.lens = OrthographicLens()
+		self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
+		self.lens.setNearFar(-40,40)
+		base.cam.node().setLens(self.lens)
 
 		# generate ground tile model and instance, creating node map
 		self.tileModel = self.loader.loadModel("box")
@@ -124,6 +167,12 @@ class DuckOfCards(ShowBase):
 		# spawn a wave for test preview
 		self.spawnEnemyWave(5,self.spawner[1])
 
+		# keyboard controls to move isometrically
+		self.accept("arrow_left", self.move, ["left"])
+		self.accept("arrow_right", self.move, ["right"])
+		self.accept("arrow_up", self.move, ["fwd"])
+		self.accept("arrow_down", self.move, ["back"])
+
 		# run the mouse and update loops
 		self.taskMgr.add(self.mouseTask, 'mouseTask', taskChain='default')
 		self.taskMgr.add(self.update, "update", taskChain='default')
@@ -131,14 +180,19 @@ class DuckOfCards(ShowBase):
 	def update(self, task):
 		dt = globalClock.getDt()
 
-		self.castleHPdisplay.setText(str(castleHP))
-
-		#for enemy in self.enemies:
-		#	#print(enemy)
-		#	enemy.setPos(enemy.getPos()-Vec3(0.,0.1*dt,0.))
-		#	#self.cam.lookAt(enemy)
+		self.ui.update()
 
 		return task.cont
+
+	def move(self, direction):
+		if direction == 'left':
+			self.cam.setPos(self.cam.getPos() + Vec3(-1,1,0))
+		elif direction == 'right':
+			self.cam.setPos(self.cam.getPos() + Vec3(1,-1,0))
+		elif direction == 'fwd':
+			self.cam.setPos(self.cam.getPos() + Vec3(1,1,0))
+		elif direction == 'back':
+			self.cam.setPos(self.cam.getPos() + Vec3(-1,-1,0))
 
 	def mouseTask(self, task):
 		if self.hitTile is not False:
@@ -174,6 +228,7 @@ class DuckOfCards(ShowBase):
 
 	def spawnEnemy(self, pos):
 		newEnNd = self.enemyModelNd.attachNewNode("enemy " + str(self.enemyCount))
+		print(str(newEnNd) + " spawning")
 		newEnemy = Enemy(newEnNd, pos)
 		self.enemyModel.instanceTo(newEnemy.node)
 		self.enemyCount += 1
