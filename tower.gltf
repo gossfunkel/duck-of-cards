@@ -60,9 +60,9 @@
 				0.5232754945755005
 			],
 			"translation":[
-				4.076245307922363,
-				5.903861999511719,
-				-1.0054539442062378
+				0.7662453651428223,
+				4.903861999511719,
+				-2.1254539489746094
 			]
 		},
 		{
@@ -107,10 +107,9 @@
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
-						"TEXCOORD_0":2,
-						"TANGENT":3
+						"TEXCOORD_0":2
 					},
-					"indices":4,
+					"indices":3,
 					"material":0
 				}
 			]
@@ -120,80 +119,68 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":72,
+			"count":80,
 			"max":[
-				1,
-				4.980287551879883,
-				1
+				0.5,
+				4.05162239074707,
+				0.5
 			],
 			"min":[
+				-0.5,
 				-1,
-				-1,
-				-1
+				-0.5
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":72,
+			"count":80,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":72,
+			"count":80,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
-			"componentType":5126,
-			"count":72,
-			"type":"VEC4"
-		},
-		{
-			"bufferView":4,
 			"componentType":5123,
-			"count":96,
+			"count":162,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":864,
+			"byteLength":960,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":864,
-			"byteOffset":864,
+			"byteLength":960,
+			"byteOffset":960,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":576,
-			"byteOffset":1728,
+			"byteLength":640,
+			"byteOffset":1920,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":1152,
-			"byteOffset":2304,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":192,
-			"byteOffset":3456,
+			"byteLength":324,
+			"byteOffset":2560,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":3648,
-			"uri":"playerBase.bin"
+			"byteLength":2884,
+			"uri":"tower.bin"
 		}
 	]
 }
