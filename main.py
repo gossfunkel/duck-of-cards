@@ -3,6 +3,7 @@ from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32,
 from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
 from direct.interval.IntervalGlobal import *
+from direct.gui.DirectGui import *
 from direct.interval.LerpInterval import LerpPosInterval
 from enum import Enum
 import simplepbr as spbr 
@@ -47,6 +48,9 @@ class UI():
 		self.goldDisplayNP.setScale(0.05)
 		self.goldDisplayNP.setPos(-0.65,0., 0.9)
 
+		self.turretButt = DirectButton(text="spawn tower", scale=0.05, 
+								pos=(-0.3, 0, 0.9), command=self.spawnTower, extraArgs=[(3.,5.,1.)])
+
 	def update(self):
 		# update hp display
 		self.castleHPdisplay.setText(str(castleHP) + "hp")
@@ -57,6 +61,19 @@ class UI():
 		self.waveDisplay.setText("Wave: " + str(waveNum))
 		# update player gold points display
 		self.goldDisplay.setText("GP: " + str(playerGold))
+
+	def spawnTower(self, pos):
+		base.spawnTower(pos)
+		return 0
+
+	def showCooldown(self, pos, cooldown):
+		cd = TextNode('cooldown at ' + str(pos))
+		cd.setText(str(cooldown))
+		cd.setFrameColor(1, 1, 1, .6)
+		cdNP = aspect2d.attachNewNode(cd)
+		cdNP.setScale(0.05)
+		# TODO : BROKEN : THIS RECEIVES THE WORLD POSITION, BUT IT NEEDS THE SCREEN POSITION
+		cdNP.setPos(pos)
 
 
 class PlayerCastle():
@@ -90,6 +107,28 @@ class Enemy():
 		# and do a wee animation?
 
 		self.node.removeNode() # clean up the node
+
+class Tower():
+	def __init__(self, towerNode, pos):
+		self.node = towerNode
+		self.node.setPos(pos)
+		#self.node.setScale()
+		self.rateOfFire = 1.0
+		self.damage = 1.0
+		self.cooldown = 0.0
+
+		base.taskMgr.add(self.attackLoop, "{}_attackLoop".format(self.node), taskChain='default')
+
+	def attackLoop(self, task):
+		if (self.cooldown == 0):
+			#if (enemy is in range):
+			#	self.launchProjectiles()
+			self.cooldown += 5./self.rateOfFire
+			base.ui.showCooldown(self.node.getPos(), self.cooldown)
+		else:
+			base.ui.showCooldown(self.node.getPos(), self.cooldown)
+			self.cooldown -= .05
+		task.cont
 
 class DuckOfCards(ShowBase):
 	def __init__(self):
@@ -131,7 +170,7 @@ class DuckOfCards(ShowBase):
 		self.lens = OrthographicLens()
 		self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
 		self.lens.setNearFar(-40,40)
-		base.cam.node().setLens(self.lens)
+		self.cam.node().setLens(self.lens)
 
 		# generate ground tile model and instance, creating node map
 		self.tileModel = self.loader.loadModel("box")
@@ -153,6 +192,12 @@ class DuckOfCards(ShowBase):
 
 		# create a player castle object
 		self.castle = PlayerCastle(self)
+
+		# initialise tower models
+		self.towerCount = 0
+		self.towerModel = self.loader.loadModel("tower.gltf")
+		self.towerModelNd = self.render.attachNewNode("tower-models")
+		self.towerModel.setScale(0.2)
 
 		# initialise enemy models & data
 		self.enemyCount = 0
@@ -243,6 +288,14 @@ class DuckOfCards(ShowBase):
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.start()
 		waveNum += 1
+
+	def spawnTower(self, pos):
+		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
+		newTowerNd = self.towerModelNd.attachNewNode("tower " + str(self.towerCount))
+		newTower = Tower(newTowerNd, pos)
+		self.towerModel.instanceTo(newTower.node)
+		self.towerCount += 1
+		return 0
 
 app = DuckOfCards()
 app.run()
