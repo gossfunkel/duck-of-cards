@@ -1,6 +1,7 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32, Vec3
-from panda3d.core import DirectionalLight, TextNode, LMatrix4
+from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue
+from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode
 from direct.interval.IntervalGlobal import *
 from direct.interval.LerpInterval import LerpPosInterval
 from enum import Enum
@@ -17,6 +18,8 @@ threading-model Cull/Draw
 loadPrcFileData("", config_vars)
 
 castleHP = 100
+playerGold = 0
+waveNum = 0
 
 class PlayerCastle():
 	def __init__(self, sb):
@@ -48,17 +51,21 @@ class Enemy():
 		castleHP -= 5
 		# and do a wee animation?
 
+		self.node.removeNode() # clean up the node
+
 class DuckOfCards(ShowBase):
 	def __init__(self):
 		ShowBase.__init__(self)
 
+		# initialise pbr for models, and shaders
 		spbr.__init__("Duck of Cards")
-
 		render.setShaderAuto()
 
+		# enums-style dict of enemy spawn positions
 		self.spawner = {1: Vec3(0.,10.,0.), 2: Vec3(10.,0.,0.), 3: Vec3(0.,-10.,0.), 4: Vec3(-10.,0.,0.)}
 
-		self.set_background_color(0.1,0.4,0.2,1.)
+		# generate UI
+		self.set_background_color(0.6,0.6,1.,1.)
 		self.castleHPdisplay = TextNode('castle HP display')
 		self.castleHPdisplay.setText(str(castleHP))
 		self.castleHPdisplay.setFrameColor(0, 0, 0, 1)
@@ -67,18 +74,15 @@ class DuckOfCards(ShowBase):
 		self.textNodePath.setScale(0.1)
 		self.textNodePath.setPos(-0.95,0., 0.8)
 
-		self.dirLight 	= DirectionalLight('dirLight')
-		self.dirLight.setColorTemperature(6950)
+		# create sunlight
+		self.dirLight = DirectionalLight('dirLight')
+		self.dirLight.setColorTemperature(6900)
 		self.dirLight.setShadowCaster(True, 512, 512)
-		self.dirLightNp  = render.attachNewNode(self.dirLight)
-		self.dirLightNp.setHpr(0,-70,135)
+		self.dirLightNp = render.attachNewNode(self.dirLight)
+		self.dirLightNp.setHpr(0,-70,120)
 		render.setLight(self.dirLightNp)
 
-		self.tileModel = self.loader.loadModel("box")
-		self.tileModel.setColor(0.,0.3,0.,1.)
-		self.tileMap = self.render.attachNewNode("tile-map")
-		self.createMap(20,20)
-
+		# initialise the isometric camera
 		self.cam.setPos(0.,0.,3.)
 		self.cam.setHpr(-45,-45,0)
 		#self.cam.setR(45) 			 # global 45deg roll
@@ -86,8 +90,28 @@ class DuckOfCards(ShowBase):
 		#self.cam.setR(self.cam, 45) # local  45deg roll
 		self.cam.setPos(self.cam, self.cam.getPos() + Vec3(0.,-12.,-4.))
 
+		# generate ground tile model and instance, creating node map
+		self.tileModel = self.loader.loadModel("box")
+		self.tileModel.setColor(0.,0.3,0.,1.)
+		self.tileMap = self.render.attachNewNode("tileMap")
+		self.createMap(20,20)
+
+		# initialise the tile picker
+		self.tilePicker = CollisionTraverser()
+		self.tpQueue = CollisionHandlerQueue()
+		tpNode = CollisionNode('tp-node')
+		tpNode.setFromCollideMask(BitMask32.bit(1))
+		tpNp = self.cam.attachNewNode(tpNode)
+		self.pickerRay = CollisionRay()
+		tpNode.addSolid(self.pickerRay)
+		self.tilePicker.addCollider(tpNp, self.tpQueue)
+		self.hitTile = False
+		#self.tilePicker.showCollisions(render)
+
+		# create a player castle object
 		self.castle = PlayerCastle(self)
 
+		# initialise enemy models & data
 		self.enemyCount = 0
 		self.enemies = []
 		self.enemyModel = self.loader.loadModel("enemy1.gltf")
@@ -97,8 +121,11 @@ class DuckOfCards(ShowBase):
 		self.enemyModel.setPos(0.2,0.,1.)
 		self.enemyModel.setColor(1.,0.5,0.5,1.)
 
+		# spawn a wave for test preview
 		self.spawnEnemyWave(5,self.spawner[1])
 
+		# run the mouse and update loops
+		self.taskMgr.add(self.mouseTask, 'mouseTask', taskChain='default')
 		self.taskMgr.add(self.update, "update", taskChain='default')
 
 	def update(self, task):
@@ -110,6 +137,27 @@ class DuckOfCards(ShowBase):
 		#	#print(enemy)
 		#	enemy.setPos(enemy.getPos()-Vec3(0.,0.1*dt,0.))
 		#	#self.cam.lookAt(enemy)
+
+		return task.cont
+
+	def mouseTask(self, task):
+		if self.hitTile is not False:
+			#clean hightlighting
+			self.tileMap.getChild(self.hitTile).setColor(0.3,0.9,0.4,1.)
+			self.hitTile = False
+
+		if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN
+			mousePos = self.mouseWatcherNode.getMouse()
+			self.pickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
+			self.tilePicker.traverse(self.tileMap)
+
+			if (self.tpQueue.getNumEntries() > 0): # when mouse ray collides with tiles:
+				self.tpQueue.sortEntries() # sort by closest first
+				tile = self.tpQueue.getEntry(0).getIntoNodePath().getNode(2)
+				tileInd = int(tile.getName().split("-")[1]) # trim name to index
+				#print("mouseover" + str(self.tileMap.getChild(tileInd)))
+				self.tileMap.getChild(tileInd).setColor(0.9,1.,0.9,1.) # highlight
+				self.hitTile = tileInd
 
 		return task.cont
 
@@ -132,11 +180,14 @@ class DuckOfCards(ShowBase):
 		self.enemies.append(newEnemy)
 
 	def spawnEnemyWave(self, num, pos):
+		global waveNum
+
 		self.spawnSeq = Sequence() 
 		for _ in range(num):
 			self.spawnSeq.append(Func(self.spawnEnemy,pos))
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.start()
+		waveNum += 1
 
 app = DuckOfCards()
 app.run()
