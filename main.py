@@ -23,6 +23,9 @@ castleHP = 100
 playerGold = 0
 waveNum = 0
 
+#def dot(vOne, vTwo):
+#	return (vOne.x*vTwo.x + vOne.y*vTwo.y + vOne.z*vTwo.z)
+
 class UI():
 	def __init__(self):
 		self.castleHPdisplay = TextNode('castle HP display')
@@ -89,14 +92,14 @@ class Enemy():
 		self.node = enemyNode
 		self.node.setPos(pos)
 		self.node.setColor(1.,0.5,0.5,1.)
-		self.hp = 20
+		self.hp = 20.0
 		# CollisionCapsule(ax, ay, az, bx, by, bz, radius)
 		self.hitSphere = CollisionCapsule(0.09, -0.1, 1.2,0.09, -0.1, 1.45, .12)
 		hcnode = CollisionNode('{}-cnode'.format(str(self.node)))
 		hcnode.setIntoCollideMask(BitMask32(0x02))
 		self.hitNp = self.node.attachNewNode(hcnode)
 		self.hitNp.node().addSolid(self.hitSphere)
-		self.hitNp.show() 								# uncomment to show hitbox
+		#self.hitNp.show() 								# uncomment to show hitbox
 
 		# testMaterial = Material()
 		# testMaterial.setShininess(3.0) # Make this material shiny
@@ -115,26 +118,52 @@ class Enemy():
 		#self.move.setDoneEvent(Interval(Func(self.despawn),0.))
 		self.moveSeq.start()
 
+		base.taskMgr.add(self.update, "update-"+str(self.node), taskChain='default')
+
+	def update(self, task):
+		if (self.hp <= 0.0):
+			self.moveSeq.finish()
+			# TODO check if I have to manually call the despawn function here
+			return task.done
+		return task.cont
+
 	def despawn(self):
 		global castleHP
 
 		print(str(self.node) + " despawning")
-		castleHP -= 5
+		castleHP -= 5.0
 		# and do a wee animation?
 
 		self.node.removeNode() # clean up the node
 
+	def damage(self, dmg):
+		self.hp -= dmg
+
 class Arrow():
-	def __init__(self, arrowNd, pos):
+	def __init__(self, arrowNd, pos, enemyId):
 		self.node = arrowNd
+		self.enemy = base.enemies[int(enemyId)]
+		self.damage = 10.0
 		self.node.setPos(pos[0]-0.1, 
-						pos()[1]-0.1,
-						pos()[2]+1.0)
+						pos[1]-0.1,
+						pos[2]+1.0)
 		#projectileNp = render.attachNewNode(ActorNode('projectile'))
 		self.cnode = CollisionNode('arrowColNode')
 		self.cnode.setFromCollideMask(BitMask32(0x00))
-		self.fromObject = self.node.attachNewNode()
-		self.fromObject.node().addSolid(CollisionSphere(0, 0, 0, 0.5))
+		self.fromObject = self.node.attachNewNode(self.cnode)
+		self.fromObject.node().addSolid(CollisionSphere(0, 0, 0, 1.))
+		self.fromObject.show()
+		self.move = self.node.posInterval(2., self.enemy.node.getPos(), self.node.getPos(), fluid=1)
+
+		# on arrival/despawn, do damage to enemy
+		self.despawnInt = Func(self.despawn)
+		self.moveSeq = Sequence(
+			self.move,
+			self.despawnInt
+		).start()
+
+	def despawn(self):
+		self.enemy.damage(self.damage)
 
 class Tower():
 	def __init__(self, towerNode, pos):
@@ -143,7 +172,7 @@ class Tower():
 		#self.node.setScale()
 		self.rateOfFire = 1.0
 		self.damage = 1.0
-		self.cooldown = 0.0
+		self.cooldown = 3.0
 
 		# initialise detection of enemies in range
 		self.rangeSphere = CollisionSphere(0, 0, 0, 4)
@@ -151,37 +180,41 @@ class Tower():
 		rcnode.setFromCollideMask(BitMask32(0x02))
 		self.rangeColliderNp = self.node.attachNewNode(rcnode)
 		self.rangeColliderNp.node().addSolid(self.rangeSphere)
-		self.rangeColliderNp.show()
+		#self.rangeColliderNp.show()
 
 		self.enemyDetector = CollisionTraverser(str(self.node) + '-enemy-detector')
 		self.detectorQueue = CollisionHandlerQueue()
 		self.enemyDetector.addCollider(self.rangeColliderNp, self.detectorQueue)
 		#self.enemyDetector.showCollisions(base.enemyModelNd)
 
-		base.taskMgr.add(self.attackLoop, str(self.node)+"_attackLoop", taskChain='default')
+		self.attackSeq = Sequence(Func(self.attackScan))
+		self.attackSeq.loop()
+		
+		#base.taskMgr.add(self.attackLoop, str(self.node)+"_attackLoop", taskChain='default')
 
-	def attackLoop(self, task):
+	def attackScan(self):
 		self.enemyDetector.traverse(base.enemyModelNd)
-		if (self.cooldown == 0):
-			print("off cooldown")
-			if (len(self.detectorQueue.entries) != 0):
-				print("enemy detected!")
-				self.detectorQueue.sortEntries()
-				if (self.detectorQueue.entries[0].getIntoNodePath() == "**enemy**"):
-					print("firing at enemy")
-					self.launchProjectiles(self.detectorQueue.entries[0].getIntoNodePath())
-					self.cooldown += 5./self.rateOfFire
-					base.ui.showCooldown(self.node.getPos(), self.cooldown)
-		else:
-			base.ui.showCooldown(self.node.getPos(), self.cooldown)
-			self.cooldown -= .05
+		self.attackSeq = Sequence(Func(self.attackScan))
 
-		task.cont
+		#print("off cooldown")
+		if (self.detectorQueue.getNumEntries() > 0):
+			print("enemy detected!")
+			self.detectorQueue.sortEntries()
+			#if (self.detectorQueue.entries[0].getIntoNodePath() == "**enemy"):
+			#self.launchProjectiles(self.detectorQueue.entries[0].getIntoNodePath().getNode(2))
+			enemyNp = self.detectorQueue.entries[0].getIntoNodePath()
+			#target = self.detectorQueue.entries[0].getSurfacePoint(enemyNp)
+			enemyId = enemyNp.getName()[26:len(enemyNp.getName())-6]
+			#print(enemyId)
+			self.launchProjectiles(enemyId)
+			self.attackSeq = Sequence(Wait(self.cooldown/self.rateOfFire),Func(self.attackScan))
 
-	def launchProjectiles(self, target):
-		print("firing at " + str(target))
+		#return task.cont
+
+	def launchProjectiles(self, enemy):
+		print("firing at " + enemy)
 		arrowNd = base.arrowModelNd.attachNewNode("arrow")
-		newArrow = Arrow(arrowNd, self.node.getPos())
+		newArrow = Arrow(arrowNd, self.node.getPos(), enemy)
 		base.arrowModel.instanceTo(arrowNd)
 
 class DuckOfCards(ShowBase):
@@ -252,7 +285,7 @@ class DuckOfCards(ShowBase):
 		# initialise projectile models
 		self.arrowModel = self.loader.loadModel("arrow1.gltf")
 		self.arrowModelNd = self.render.attachNewNode("arrow-models")
-		self.arrowModel.setScale(0.05)
+		self.arrowModel.setScale(0.25)
 
 		# initialise tower models
 		self.towerCount = 0
