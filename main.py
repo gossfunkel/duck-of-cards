@@ -1,7 +1,8 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32, Vec3
-from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue
+from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Material
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
+from panda3d.core import CollisionSphere, CollisionCapsule
 from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
 from direct.interval.LerpInterval import LerpPosInterval
@@ -48,8 +49,8 @@ class UI():
 		self.goldDisplayNP.setScale(0.05)
 		self.goldDisplayNP.setPos(-0.65,0., 0.9)
 
-		self.turretButt = DirectButton(text="spawn tower", scale=0.05, 
-								pos=(-0.3, 0, 0.9), command=self.spawnTower, extraArgs=[(3.,5.,1.)])
+		#self.turretButt = DirectButton(text="spawn tower", scale=0.05, 
+		#						pos=(-0.3, 0, 0.9), command=self.spawnTower, extraArgs=[(3.,5.,1.)])
 
 	def update(self):
 		# update hp display
@@ -75,7 +76,6 @@ class UI():
 		# TODO : BROKEN : THIS RECEIVES THE WORLD POSITION, BUT IT NEEDS THE SCREEN POSITION
 		cdNP.setPos(pos)
 
-
 class PlayerCastle():
 	def __init__(self, sb):
 		self.model = sb.loader.loadModel("playerBase.gltf")
@@ -88,6 +88,20 @@ class Enemy():
 	def __init__(self, enemyNode, pos):
 		self.node = enemyNode
 		self.node.setPos(pos)
+		self.node.setColor(1.,0.5,0.5,1.)
+		self.hp = 20
+		# CollisionCapsule(ax, ay, az, bx, by, bz, radius)
+		self.hitSphere = CollisionCapsule(0.09, -0.1, 1.2,0.09, -0.1, 1.45, .12)
+		self.hitNp = self.node.attachNewNode(CollisionNode('{}-cnode'.format(str(self.node))))
+		self.hitNp.node().addSolid(self.hitSphere)
+		#self.hitNp.show() 								# uncomment to show hitbox
+
+		# testMaterial = Material()
+		# testMaterial.setShininess(3.0) # Make this material shiny
+		# testMaterial.setAmbient((0, 0, 1, 1)) # Make this material blue
+		# testMaterial.setLocal(False)
+		# self.node.getParent().setMaterial(testMaterial) # Apply material
+
 		self.move = self.node.posInterval(10., Vec3(0,0,0), pos)
 		self.despawnInt = Func(self.despawn)
 		self.moveSeq = Sequence(
@@ -116,19 +130,34 @@ class Tower():
 		self.rateOfFire = 1.0
 		self.damage = 1.0
 		self.cooldown = 0.0
+		#self.projectilePusher = PhysicsCollisionHandler()
+		self.rangeSphere = CollisionSphere(0, 0, 0, 4)
+		self.rangeColliderNp = self.node.attachNewNode(CollisionNode(str(self.node) + '-range-cnode'))
+		self.rangeColliderNp.node().addSolid(self.rangeSphere)
+		#self.rangeColliderNp.show()
+		self.enemyDetector = CollisionTraverser(str(self.node) + '-enemy-detector')
+		self.detectorQueue = CollisionHandlerQueue()
+		self.enemyDetector.addCollider(self.rangeColliderNp, self.detectorQueue)
 
 		base.taskMgr.add(self.attackLoop, "{}_attackLoop".format(self.node), taskChain='default')
 
 	def attackLoop(self, task):
 		if (self.cooldown == 0):
-			#if (enemy is in range):
-			#	self.launchProjectiles()
+			if (self.detectorQueue.entries != None):
+				self.launchProjectiles()
 			self.cooldown += 5./self.rateOfFire
 			base.ui.showCooldown(self.node.getPos(), self.cooldown)
 		else:
 			base.ui.showCooldown(self.node.getPos(), self.cooldown)
 			self.cooldown -= .05
 		task.cont
+
+	def launchProjectiles(self):
+		target = self.detectorQueue.entries[0]
+		projectileNp = render.attachNewNode(ActorNode('projectile'))
+		fromObject = projectileNp.attachNewNode(CollisionNode('projectileColNode'))
+		fromObject.node().addSolid(CollisionSphere(0, 0, 0, 1))
+		self.projectilePusher.addCollider(fromObject, projectileNp)
 
 class DuckOfCards(ShowBase):
 	def __init__(self):
@@ -153,10 +182,11 @@ class DuckOfCards(ShowBase):
 
 		# create sunlight
 		self.dirLight = DirectionalLight('dirLight')
-		self.dirLight.setColorTemperature(6900)
-		self.dirLight.setShadowCaster(True, 512, 512)
+		self.dirLight.setColorTemperature(6000)
+		self.dirLight.setShadowCaster(True, 256, 256)
+		#self.dirLight.setAttenuation(1,0,1)
 		self.dirLightNp = render.attachNewNode(self.dirLight)
-		self.dirLightNp.setHpr(0,-70,120)
+		self.dirLightNp.setHpr(-80,-50,20)
 		render.setLight(self.dirLightNp)
 
 		# initialise the dimetric camera (26.565deg for square pixels)
@@ -202,15 +232,25 @@ class DuckOfCards(ShowBase):
 		# initialise enemy models & data
 		self.enemyCount = 0
 		self.enemies = []
-		self.enemyModel = self.loader.loadModel("enemy1.gltf")
+		self.enemyModel = self.loader.loadModel("enemy2.gltf")
 		self.enemyModelNd = self.render.attachNewNode("enemy-models")
 		#self.enemyModel.reparentTo(render)
 		self.enemyModel.setScale(0.1)
 		self.enemyModel.setPos(0.2,0.,1.)
-		self.enemyModel.setColor(1.,0.5,0.5,1.)
 
-		# spawn a wave for test preview
-		self.spawnEnemyWave(5,self.spawner[1])
+		#print(self.enemyModel.findAllMaterials())
+
+		# spawn waves 								TODO - figure out spawning from both sides
+		#													without incrementing waveNum twice:
+		self.ui.spawnTower(Vec3(3.,5.,1.))
+		self.waveSchedule = Sequence(
+			Func(self.spawnEnemyWave, 5, self.spawner[1]),
+			Wait(25.0),
+			Func(self.spawnEnemyWave, 5, self.spawner[2]),
+			Wait(25.0),
+			Func(self.spawnEnemyWave, 5, self.spawner[3]),
+			Func(self.spawnEnemyWave, 5, self.spawner[1])
+		).start()
 
 		# keyboard controls to move isometrically
 		self.accept("arrow_left", self.move, ["left"])
@@ -281,13 +321,14 @@ class DuckOfCards(ShowBase):
 
 	def spawnEnemyWave(self, num, pos):
 		global waveNum
+		waveNum += 1
 
+		print("Spawning wave " + str(waveNum))
 		self.spawnSeq = Sequence() 
 		for _ in range(num):
 			self.spawnSeq.append(Func(self.spawnEnemy,pos))
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.start()
-		waveNum += 1
 
 	def spawnTower(self, pos):
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
