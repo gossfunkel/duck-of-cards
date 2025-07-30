@@ -2,7 +2,7 @@ from direct.showbase.ShowBase import ShowBase
 from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32, Vec3
 from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Material
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
-from panda3d.core import CollisionSphere, CollisionCapsule
+from panda3d.core import CollisionSphere, CollisionCapsule, Point3, TextureStage, TexGenAttrib
 from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
 from direct.interval.LerpInterval import LerpPosInterval
@@ -33,8 +33,8 @@ class UI():
 		self.castleHPdisplay.setFrameColor(0, 0, 1, 1)
 		self.castleHPdisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
 		self.castleTextNP = aspect2d.attachNewNode(self.castleHPdisplay)
-		self.castleTextNP.setScale(0.08)
-		self.castleTextNP.setPos(-1.2,0., 0.9)
+		self.castleTextNP.setScale(0.1)
+		self.castleTextNP.setPos(-1.4,0., 0.85)
 
 		self.waveDisplay = TextNode('wave number display')
 		self.waveDisplay.setText("Wave: " + str(waveNum))
@@ -42,7 +42,7 @@ class UI():
 		self.waveDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
 		self.waveDisplayNP = aspect2d.attachNewNode(self.waveDisplay)
 		self.waveDisplayNP.setScale(0.05)
-		self.waveDisplayNP.setPos(-0.85,0., 0.9)
+		self.waveDisplayNP.setPos(-0.9,0., 0.9)
 
 		self.goldDisplay = TextNode('player gold display')
 		self.goldDisplay.setText("GP: " + str(playerGold))
@@ -50,7 +50,7 @@ class UI():
 		self.goldDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
 		self.goldDisplayNP = aspect2d.attachNewNode(self.goldDisplay)
 		self.goldDisplayNP.setScale(0.05)
-		self.goldDisplayNP.setPos(-0.65,0., 0.9)
+		self.goldDisplayNP.setPos(-0.9,0., 0.82)
 
 		#self.turretButt = DirectButton(text="spawn tower", scale=0.05, 
 		#						pos=(-0.3, 0, 0.9), command=self.spawnTower, extraArgs=[(3.,5.,1.)])
@@ -87,13 +87,25 @@ class PlayerCastle():
 		self.model.setPos(0.,0.,1.)
 		self.model.setColor(0.3,0.35,0.6,1.)
 
+	def takeDmg(self):
+		global castleHP
+		# take damage
+		castleHP -= 5.0
+		# flash red for a moment
+		Sequence(Func(self.model.setColor,1.,0.,0.,1.),
+				Wait(0.1),
+				Func(self.model.setColor,0.3,0.35,0.6,1.)).start()
+
 class Enemy():
-	def __init__(self, enemyNode, pos):
+	def __init__(self, enemyNode, pos, speed):
 		self.node = enemyNode
 		self.node.setPos(pos)
 		self.node.setColor(1.,0.5,0.5,1.)
+		self.node.setH(-30)
 		self.hp = 20.0
-		# CollisionCapsule(ax, ay, az, bx, by, bz, radius)
+		self.speed = speed # allows slowing and rushing effects
+
+						# CollisionCapsule(ax, ay, az, bx, by, bz, radius)
 		self.hitSphere = CollisionCapsule(0.09, -0.1, 1.2,0.09, -0.1, 1.45, .12)
 		hcnode = CollisionNode('{}-cnode'.format(str(self.node)))
 		hcnode.setIntoCollideMask(BitMask32(0x02))
@@ -101,43 +113,48 @@ class Enemy():
 		self.hitNp.node().addSolid(self.hitSphere)
 		#self.hitNp.show() 								# uncomment to show hitbox
 
-		# testMaterial = Material()
-		# testMaterial.setShininess(3.0) # Make this material shiny
-		# testMaterial.setAmbient((0, 0, 1, 1)) # Make this material blue
-		# testMaterial.setLocal(False)
-		# self.node.getParent().setMaterial(testMaterial) # Apply material
-
-		self.move = self.node.posInterval(10., Vec3(0,0,0), pos)
-		self.despawnInt = Func(self.despawn)
+		self.move = self.node.posInterval(20./self.speed, Vec3(0,0,0), self.node.getPos())
 		self.moveSeq = Sequence(
 			self.move,
-			self.despawnInt
+			Func(self.despawnAtk)
 		)
-		#self.move = LerpPosInterval(self.node, 15, Vec3(0,0,0),
-		#								startPos=pos, blendType='noBlend', fluid=1)
-		#self.move.setDoneEvent(Interval(Func(self.despawn),0.))
 		self.moveSeq.start()
 
 		base.taskMgr.add(self.update, "update-"+str(self.node), taskChain='default')
 
 	def update(self, task):
-		if (self.hp <= 0.0):
-			self.moveSeq.finish()
-			# TODO check if I have to manually call the despawn function here
+		if (self.hp <= 0.0): # die if health gets too low
+			self.despawnDie()
 			return task.done
+		# otherwise, keep going :)
 		return task.cont
 
-	def despawn(self):
-		global castleHP
-
-		print(str(self.node) + " despawning")
-		castleHP -= 5.0
+	def despawnAtk(self):
+		# damage the castle
 		# and do a wee animation?
+		base.castle.takeDmg()
 
-		self.node.removeNode() # clean up the node
+		# clean up the node
+		print(str(self.node) + " despawning")
+		self.node.removeNode() 
+
+	def despawnDie(self):
+		global playerGold
+		# do a wee animation?
+		self.moveSeq.pause()
+		playerGold += 5
+		# clean up the node
+		print(str(self.node) + " dying")
+		self.node.removeNode() 
 
 	def damage(self, dmg):
+		# take the damage
 		self.hp -= dmg
+		# flash red for a moment
+		if self.hp > 0:
+			Sequence(Func(self.node.setColor,1.,0.,0.,1.),
+					Wait(0.1),
+					Func(self.node.setColor,1.,0.5,0.5,1.)).start()
 
 class Arrow():
 	def __init__(self, arrowNd, pos, enemyId):
@@ -147,13 +164,16 @@ class Arrow():
 		self.node.setPos(pos[0]-0.1, 
 						pos[1]-0.1,
 						pos[2]+1.0)
+		self.node.lookAt(self.enemy.node.getPos())
+		self.node.setP(-110)
 		#projectileNp = render.attachNewNode(ActorNode('projectile'))
-		self.cnode = CollisionNode('arrowColNode')
-		self.cnode.setFromCollideMask(BitMask32(0x00))
-		self.fromObject = self.node.attachNewNode(self.cnode)
-		self.fromObject.node().addSolid(CollisionSphere(0, 0, 0, 1.))
-		self.fromObject.show()
-		self.move = self.node.posInterval(2., self.enemy.node.getPos(), self.node.getPos(), fluid=1)
+		# self.cnode = CollisionNode('arrowColNode')
+		# self.cnode.setFromCollideMask(BitMask32(0x00))
+		# self.fromObject = self.node.attachNewNode(self.cnode)
+		# self.fromObject.node().addSolid(CollisionSphere(0, 0, 0, .2))
+		#self.fromObject.show()
+		self.move = self.node.posInterval(.5, self.getTargetPos(), 
+											self.node.getPos(), fluid=1, blendType='noBlend',)
 
 		# on arrival/despawn, do damage to enemy
 		self.despawnInt = Func(self.despawn)
@@ -162,8 +182,19 @@ class Arrow():
 			self.despawnInt
 		).start()
 
+	def getTargetPos(self):
+		# get up-to-date position
+		p = self.enemy.node.getPos()
+		# adjust for visual accuracy
+		p[0] += .55
+		p[1] -= .3
+		p[2] += 1.3
+		return p
+
 	def despawn(self):
+		# do damage and remove
 		self.enemy.damage(self.damage)
+		self.node.removeNode()
 
 class Tower():
 	def __init__(self, towerNode, pos):
@@ -173,6 +204,7 @@ class Tower():
 		self.rateOfFire = 1.0
 		self.damage = 1.0
 		self.cooldown = 3.0
+		self.onCD = False
 
 		# initialise detection of enemies in range
 		self.rangeSphere = CollisionSphere(0, 0, 0, 4)
@@ -187,29 +219,40 @@ class Tower():
 		self.enemyDetector.addCollider(self.rangeColliderNp, self.detectorQueue)
 		#self.enemyDetector.showCollisions(base.enemyModelNd)
 
-		self.attackSeq = Sequence(Func(self.attackScan))
-		self.attackSeq.loop()
+		self.cdInt = Wait(self.cooldown/self.rateOfFire)
+		self.cdSeq = Sequence(self.cdInt,Func(self.cdOFF))
 		
-		#base.taskMgr.add(self.attackLoop, str(self.node)+"_attackLoop", taskChain='default')
+		base.taskMgr.add(self.update, str(self.node)+"_update", taskChain='default')
+
+	def update(self, task):
+		# scan for enemies if not on cooldown
+		if not self.onCD: self.attackScan()
+
+		return task.cont
+
+	def cdOFF(self):
+		self.onCD = False
 
 	def attackScan(self):
+		# check for intersecting collisionsolids
 		self.enemyDetector.traverse(base.enemyModelNd)
-		self.attackSeq = Sequence(Func(self.attackScan))
+		#print("scanning...")
 
-		#print("off cooldown")
 		if (self.detectorQueue.getNumEntries() > 0):
-			print("enemy detected!")
+			#print("enemy detected!")
+			# sort queue of detected solids by closest (n.b. edit here for priority options)
 			self.detectorQueue.sortEntries()
-			#if (self.detectorQueue.entries[0].getIntoNodePath() == "**enemy"):
-			#self.launchProjectiles(self.detectorQueue.entries[0].getIntoNodePath().getNode(2))
+
+			# find nodePoint and ID of detected enemy
 			enemyNp = self.detectorQueue.entries[0].getIntoNodePath()
 			#target = self.detectorQueue.entries[0].getSurfacePoint(enemyNp)
-			enemyId = enemyNp.getName()[26:len(enemyNp.getName())-6]
-			#print(enemyId)
+			enemyId = enemyNp.getName()[26:len(enemyNp.getName())-6] #print(enemyId)
+			# FIRE
 			self.launchProjectiles(enemyId)
-			self.attackSeq = Sequence(Wait(self.cooldown/self.rateOfFire),Func(self.attackScan))
 
-		#return task.cont
+			# put self on cooldown
+			self.onCD = True
+			self.cdSeq.start()
 
 	def launchProjectiles(self, enemy):
 		print("firing at " + enemy)
@@ -263,6 +306,12 @@ class DuckOfCards(ShowBase):
 		# generate ground tile model and instance, creating node map
 		self.tileModel = self.loader.loadModel("box")
 		self.tileModel.setColor(0.,0.3,0.,1.)
+		self.tileModel.setTexGen(TextureStage.getDefault(), TexGenAttrib.MWorldPosition)
+		self.tileModel.setTexProjector(TextureStage.getDefault(), render, self.tileModel)
+		self.tileModel.setTexPos(TextureStage.getDefault(), 0.44, 0.5, 0.2)
+		self.tileModel.setTexScale(TextureStage.getDefault(), 0.2)
+		tex = loader.load3DTexture("assets/ground-tile-#.png")
+		self.tileModel.setTexture(tex)
 		self.tileMap = self.render.attachNewNode("tileMap")
 		self.createMap(20,20)
 
@@ -333,6 +382,7 @@ class DuckOfCards(ShowBase):
 
 		return task.cont
 
+	# camera movement function (step around by blocks of 1x1)
 	def move(self, direction):
 		if direction == 'left':
 			self.cam.setPos(self.cam.getPos() + Vec3(-1,1,0))
@@ -343,13 +393,14 @@ class DuckOfCards(ShowBase):
 		elif direction == 'back':
 			self.cam.setPos(self.cam.getPos() + Vec3(-1,-1,0))
 
+	# ray-based tile picker for placing down towers
 	def mouseTask(self, task):
 		if self.hitTile is not False:
 			#clean hightlighting
-			self.tileMap.getChild(self.hitTile).setColor(0.3,0.9,0.4,1.)
+			#self.tileMap.getChild(self.hitTile).setColor(0.3,0.9,0.4,1.)
 			self.hitTile = False
 
-		if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN
+		if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 			mousePos = self.mouseWatcherNode.getMouse()
 			self.pickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
 			self.tilePicker.traverse(self.tileMap)
@@ -359,26 +410,29 @@ class DuckOfCards(ShowBase):
 				tile = self.tpQueue.getEntry(0).getIntoNodePath().getNode(2)
 				tileInd = int(tile.getName().split("-")[1]) # trim name to index
 				#print("mouseover" + str(self.tileMap.getChild(tileInd)))
-				self.tileMap.getChild(tileInd).setColor(0.9,1.,0.9,1.) # highlight
+				#self.tileMap.getChild(tileInd).setColor(0.9,1.,0.9,1.) # highlight
 				self.hitTile = tileInd
 
 		return task.cont
 
+	# generate ground
 	def createMap(self, width, length):
 		counter = 0
+				
 		for y in range(length) :
 			for x in range(width):
 				# generate tile
 				tile = self.tileMap.attachNewNode("tile-" + str(counter))
 				tile.setPos(width/2 - (width-x),length/2 - (length-y),0.)
 				self.tileModel.instanceTo(tile)
+
 				tile.find("**/box").node().setIntoCollideMask(BitMask32(0x01))
 				counter += 1
 
 	def spawnEnemy(self, pos):
 		newEnNd = self.enemyModelNd.attachNewNode("enemy " + str(self.enemyCount))
 		print(str(newEnNd) + " spawning")
-		newEnemy = Enemy(newEnNd, pos)
+		newEnemy = Enemy(newEnNd, pos, 1.)
 		self.enemyModel.instanceTo(newEnemy.node)
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
