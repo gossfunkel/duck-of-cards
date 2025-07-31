@@ -382,6 +382,8 @@ class DuckOfCards(ShowBase):
 		self.accept("arrow_up", self.move, ["fwd"])
 		self.accept("arrow_down", self.move, ["back"])
 
+		self.accept("mouse1", self.onMouse)
+
 		# run the mouse and update loops
 		self.taskMgr.add(self.mouseTask, 'mouseTask', taskChain='default')
 		self.taskMgr.add(self.update, "update", taskChain='default')
@@ -396,6 +398,12 @@ class DuckOfCards(ShowBase):
 		self.ui.update()
 
 		return task.cont
+
+	# respond to mouseclick
+	def onMouse(self):
+		if self.choosingTile:
+			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0,0,1))
+			self.choosingTile = False
 
 	# camera movement function (step around by blocks of 1x1)
 	def move(self, direction):
@@ -412,30 +420,28 @@ class DuckOfCards(ShowBase):
 	def mouseTask(self, task):
 		if (self.choosingTile):
 			if self.hitTile is not False:
-				#clean hightlighting
+				#clear hightlighting
 				self.tileMap.getChild(self.hitTile).setColor(0.3,0.9,0.4,1.)
 				self.hitTile = False
 
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
+				# get mouse position and traverse tileMap with the pickerRay
 				mousePos = self.mouseWatcherNode.getMouse()
 				self.pickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
 				self.tilePicker.traverse(self.tileMap)
 
-				if (self.tpQueue.getNumEntries() > 0): # when mouse ray collides with tiles:
-					self.tpQueue.sortEntries() # sort by closest first
+				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
+					self.tpQueue.sortEntries() 			# sort by closest first
 					tile = self.tpQueue.getEntry(0).getIntoNodePath().getNode(2)
+					#tile = self.tpQueue.getEntry(0).getIntoNodePath().findNetTag('tile-**')
 					tileInd = int(tile.getName().split("-")[1]) # trim name to index
 					#print("mouseover" + str(self.tileMap.getChild(tileInd)))
 					self.tileMap.getChild(tileInd).setColor(0.9,1.,0.9,1.) # highlight
 					self.hitTile = tileInd
 
-					if(self.mouseWatcherNode.hasClick()):
-						self.spawnTower(self.hitTile.getPos())
-
 		return task.cont
 
-	# generate ground
-	def createMap(self, width, length):
+	def createMap(self, width, length): 	# generate pickable tiles to place towers on
 		counter = 0
 				
 		for y in range(length) :
@@ -444,11 +450,12 @@ class DuckOfCards(ShowBase):
 				tile = self.tileMap.attachNewNode("tile-" + str(counter))
 				tile.setPos(width/2 - (width-x),length/2 - (length-y),0.)
 				self.tileModel.instanceTo(tile)
+				tile.setTag("tile-" + str(counter), str(counter))
 
 				tile.find("**/box").node().setIntoCollideMask(BitMask32(0x01))
 				counter += 1
 
-	def spawnEnemy(self, pos):
+	def spawnEnemy(self, pos): 				# spawn an individual creep
 		newEnNd = self.enemyModelNd.attachNewNode("enemy " + str(self.enemyCount))
 		print(str(newEnNd) + " spawning")
 		newEnemy = Enemy(newEnNd, pos, 1.)
@@ -456,7 +463,7 @@ class DuckOfCards(ShowBase):
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
 
-	def spawnEnemyWave(self, num, pos):
+	def spawnEnemyWave(self, num, pos): 	# spawn a wave of creeps
 		global waveNum
 		waveNum += 1
 
@@ -467,7 +474,8 @@ class DuckOfCards(ShowBase):
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.start()
 
-	def pickTower(self):
+	def pickTower(self): 	# TODO: I should probably use an FSM for this, the card shop menu, 
+							# 		a pause screen/button, and the 'game over' screen
 		self.choosingTile = True
 
 	def spawnTower(self, pos):
@@ -478,15 +486,14 @@ class DuckOfCards(ShowBase):
 		self.towerCount += 1
 		return 0
 
-	def startGame(self):
+	def startGame(self): 	# remove all towers, enemies etc and prepare the game start-state
 		global waveNum, playerGold, castleHP
-		# remove all towers, enemies etc and prepare the game start-state
+		
 		waveNum = 0
 		playerGold = 0
 		castleHP = 100
 
-	def quit(self):
-		# exit the game in a reasonable fashion
+	def quit(self): 		# exit the game in a reasonable fashion
 		base.userExit()
 
 app = DuckOfCards()
