@@ -52,8 +52,20 @@ class UI():
 		self.goldDisplayNP.setScale(0.05)
 		self.goldDisplayNP.setPos(-0.9,0., 0.82)
 
-		#self.turretButt = DirectButton(text="spawn tower", scale=0.05, 
-		#						pos=(-0.3, 0, 0.9), command=self.spawnTower, extraArgs=[(3.,5.,1.)])
+		self.turretButt = DirectButton(text="place tower", scale=0.05, 
+								pos=(-0.3, 0, 0.9), command=base.pickTower)
+
+		# construct game over screen elements
+		self.gameOverScreen = DirectDialog(frameSize = (-0.7, 0.7, -0.7, 0.7),
+                                   fadeScreen = 0.4,
+                                   relief = DGG.FLAT)
+		self.gameOverScreen.hide()
+		self.gameOverLabel = DirectLabel(text = "Game Over!", parent = self.gameOverScreen,
+										scale = 0.1, pos = (0, 0, 0.2))
+		restartBtn 	= DirectButton(text="Restart", command=base.startGame, pos=(-0.3, 0, -0.2),
+								parent=self.gameOverScreen, scale=0.1)
+		quitBtn 	= DirectButton(text="Quit", command=base.quit, pos=(0.3, 0, -0.2),
+								parent=self.gameOverScreen, scale=0.1)
 
 	def update(self):
 		# update hp display
@@ -66,18 +78,14 @@ class UI():
 		# update player gold points display
 		self.goldDisplay.setText("GP: " + str(playerGold))
 
-	def spawnTower(self, pos):
-		base.spawnTower(pos)
-		return 0
-
-	def showCooldown(self, pos, cooldown):
-		cd = TextNode('cooldown at ' + str(pos))
-		cd.setText(str(cooldown))
-		cd.setFrameColor(1, 1, 1, .6)
-		cdNP = aspect2d.attachNewNode(cd)
-		cdNP.setScale(0.05)
-		# TODO : BROKEN : THIS RECEIVES THE WORLD POSITION, BUT IT NEEDS THE SCREEN POSITION
-		cdNP.setPos(pos)
+	# def showCooldown(self, pos, cooldown):
+	# 	cd = TextNode('cooldown at ' + str(pos))
+	# 	cd.setText(str(cooldown))
+	# 	cd.setFrameColor(1, 1, 1, .6)
+	# 	cdNP = aspect2d.attachNewNode(cd)
+	# 	cdNP.setScale(0.05)
+	# 	# TODO : BROKEN : THIS RECEIVES THE WORLD POSITION, BUT IT NEEDS THE SCREEN POSITION
+	# 	cdNP.setPos(pos)
 
 class PlayerCastle():
 	def __init__(self, sb):
@@ -305,13 +313,13 @@ class DuckOfCards(ShowBase):
 
 		# generate ground tile model and instance, creating node map
 		self.tileModel = self.loader.loadModel("box")
-		self.tileModel.setColor(0.,0.3,0.,1.)
+		#self.tileModel.setColor(0.,0.3,0.,1.)
+		tex = loader.load3DTexture("assets/ground-tile-#.png")
+		self.tileModel.setTexture(tex)
 		self.tileModel.setTexGen(TextureStage.getDefault(), TexGenAttrib.MWorldPosition)
 		self.tileModel.setTexProjector(TextureStage.getDefault(), render, self.tileModel)
 		self.tileModel.setTexPos(TextureStage.getDefault(), 0.44, 0.5, 0.2)
 		self.tileModel.setTexScale(TextureStage.getDefault(), 0.2)
-		tex = loader.load3DTexture("assets/ground-tile-#.png")
-		self.tileModel.setTexture(tex)
 		self.tileMap = self.render.attachNewNode("tileMap")
 		self.createMap(20,20)
 
@@ -322,10 +330,10 @@ class DuckOfCards(ShowBase):
 		tpNode.setFromCollideMask(BitMask32(0x01))
 		tpNp = self.cam.attachNewNode(tpNode)
 		self.pickerRay = CollisionRay()
-		#self.pickerRay.setCollideMask(0)
 		tpNode.addSolid(self.pickerRay)
 		self.tilePicker.addCollider(tpNp, self.tpQueue)
 		self.hitTile = False
+		self.choosingTile = False
 		#self.tilePicker.showCollisions(render)
 
 		# create a player castle object
@@ -355,14 +363,17 @@ class DuckOfCards(ShowBase):
 
 		# spawn waves 								TODO - figure out spawning from both sides
 		#													without incrementing waveNum twice:
-		self.ui.spawnTower(Vec3(3.,5.,1.))
+		#self.ui.spawnTower(Vec3(3.,5.,1.))
 		self.waveSchedule = Sequence(
 			Func(self.spawnEnemyWave, 5, self.spawner[1]),
 			Wait(25.0),
 			Func(self.spawnEnemyWave, 5, self.spawner[2]),
 			Wait(25.0),
 			Func(self.spawnEnemyWave, 5, self.spawner[3]),
-			Func(self.spawnEnemyWave, 5, self.spawner[1])
+			Wait(25.0),
+			Func(self.spawnEnemyWave, 10, self.spawner[1]),
+			Wait(25.0),
+			Func(self.spawnEnemyWave, 10, self.spawner[4])
 		).start()
 
 		# keyboard controls to move isometrically
@@ -377,6 +388,10 @@ class DuckOfCards(ShowBase):
 
 	def update(self, task):
 		dt = globalClock.getDt()
+
+		if not (castleHP > 0):
+			if self.ui.gameOverScreen.isHidden():
+				self.ui.gameOverScreen.show()
 
 		self.ui.update()
 
@@ -395,23 +410,27 @@ class DuckOfCards(ShowBase):
 
 	# ray-based tile picker for placing down towers
 	def mouseTask(self, task):
-		if self.hitTile is not False:
-			#clean hightlighting
-			#self.tileMap.getChild(self.hitTile).setColor(0.3,0.9,0.4,1.)
-			self.hitTile = False
+		if (self.choosingTile):
+			if self.hitTile is not False:
+				#clean hightlighting
+				self.tileMap.getChild(self.hitTile).setColor(0.3,0.9,0.4,1.)
+				self.hitTile = False
 
-		if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
-			mousePos = self.mouseWatcherNode.getMouse()
-			self.pickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
-			self.tilePicker.traverse(self.tileMap)
+			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
+				mousePos = self.mouseWatcherNode.getMouse()
+				self.pickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
+				self.tilePicker.traverse(self.tileMap)
 
-			if (self.tpQueue.getNumEntries() > 0): # when mouse ray collides with tiles:
-				self.tpQueue.sortEntries() # sort by closest first
-				tile = self.tpQueue.getEntry(0).getIntoNodePath().getNode(2)
-				tileInd = int(tile.getName().split("-")[1]) # trim name to index
-				#print("mouseover" + str(self.tileMap.getChild(tileInd)))
-				#self.tileMap.getChild(tileInd).setColor(0.9,1.,0.9,1.) # highlight
-				self.hitTile = tileInd
+				if (self.tpQueue.getNumEntries() > 0): # when mouse ray collides with tiles:
+					self.tpQueue.sortEntries() # sort by closest first
+					tile = self.tpQueue.getEntry(0).getIntoNodePath().getNode(2)
+					tileInd = int(tile.getName().split("-")[1]) # trim name to index
+					#print("mouseover" + str(self.tileMap.getChild(tileInd)))
+					self.tileMap.getChild(tileInd).setColor(0.9,1.,0.9,1.) # highlight
+					self.hitTile = tileInd
+
+					if(self.mouseWatcherNode.hasClick()):
+						self.spawnTower(self.hitTile.getPos())
 
 		return task.cont
 
@@ -448,6 +467,9 @@ class DuckOfCards(ShowBase):
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.start()
 
+	def pickTower(self):
+		self.choosingTile = True
+
 	def spawnTower(self, pos):
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
 		newTowerNd = self.towerModelNd.attachNewNode("tower " + str(self.towerCount))
@@ -455,6 +477,17 @@ class DuckOfCards(ShowBase):
 		self.towerModel.instanceTo(newTower.node)
 		self.towerCount += 1
 		return 0
+
+	def startGame(self):
+		global waveNum, playerGold, castleHP
+		# remove all towers, enemies etc and prepare the game start-state
+		waveNum = 0
+		playerGold = 0
+		castleHP = 100
+
+	def quit(self):
+		# exit the game in a reasonable fashion
+		base.userExit()
 
 app = DuckOfCards()
 app.run()
