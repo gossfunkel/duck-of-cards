@@ -106,7 +106,8 @@ class Enemy():
 		self.node = enemyNode
 		self.node.setPos(pos)
 		self.node.setColor(1.,0.5,0.5,1.)
-		self.node.setH(-30)
+		#self.node.setH(-30)
+		self.node.lookAt(base.castle.model)
 		self.hp = 20.0
 		self.speed = speed # allows slowing and rushing effects
 
@@ -345,11 +346,11 @@ class DuckOfCards(ShowBase):
 		# initialise enemy models & data
 		self.enemyCount = 0
 		self.enemies = []
-		self.enemyModel = self.loader.loadModel("enemy2.gltf")
+		self.enemyModel = self.loader.loadModel("assets/enemy1.gltf")
 		self.enemyModelNd = self.render.attachNewNode("enemy-models")
 		#self.enemyModel.reparentTo(render)
 		self.enemyModel.setScale(0.1)
-		self.enemyModel.setPos(0.2,0.,1.)
+		self.enemyModel.setPos(0.,0.,1.)
 
 		#print(self.enemyModel.findAllMaterials())
 
