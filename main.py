@@ -23,9 +23,6 @@ castleHP = 100
 playerGold = 0
 waveNum = 0
 
-#def dot(vOne, vTwo):
-#	return (vOne.x*vTwo.x + vOne.y*vTwo.y + vOne.z*vTwo.z)
-
 class UI():
 	def __init__(self):
 		self.castleHPdisplay = TextNode('castle HP display')
@@ -169,11 +166,9 @@ class Arrow():
 		self.node = arrowNd
 		self.enemy = base.enemies[int(enemyId)]
 		self.damage = 10.0
-		self.node.setPos(pos[0]-0.1, 
-						pos[1]-0.1,
-						pos[2]+1.0)
+		self.node.setPos(pos)
 		self.node.lookAt(self.enemy.node.getPos())
-		self.node.setP(-110)
+		self.node.setP(30)
 		#projectileNp = render.attachNewNode(ActorNode('projectile'))
 		# self.cnode = CollisionNode('arrowColNode')
 		# self.cnode.setFromCollideMask(BitMask32(0x00))
@@ -181,7 +176,7 @@ class Arrow():
 		# self.fromObject.node().addSolid(CollisionSphere(0, 0, 0, .2))
 		#self.fromObject.show()
 		self.move = self.node.posInterval(.5, self.getTargetPos(), 
-											self.node.getPos(), fluid=1, blendType='noBlend',)
+											self.node.getPos(), fluid=1, blendType='noBlend')
 
 		# on arrival/despawn, do damage to enemy
 		self.despawnInt = Func(self.despawn)
@@ -312,14 +307,11 @@ class DuckOfCards(ShowBase):
 		self.cam.node().setLens(self.lens)
 
 		# generate ground tile model and instance, creating node map
+		self.tileStage = TextureStage('tileStage')
 		self.tileModel = self.loader.loadModel("box")
-		#self.tileModel.setColor(0.,0.3,0.,1.)
-		tex = loader.load3DTexture("assets/ground-tile-#.png")
-		self.tileModel.setTexture(tex)
-		self.tileModel.setTexGen(TextureStage.getDefault(), TexGenAttrib.MWorldPosition)
-		self.tileModel.setTexProjector(TextureStage.getDefault(), render, self.tileModel)
-		self.tileModel.setTexPos(TextureStage.getDefault(), 0.44, 0.5, 0.2)
-		self.tileModel.setTexScale(TextureStage.getDefault(), 0.2)
+		self.tileModel.clearTexture()
+		self.groundTex = loader.load3DTexture("assets/ground-tile_#.png")
+		self.tileModel.setTexture(self.groundTex, 1)
 		self.tileMap = self.render.attachNewNode("tileMap")
 		self.createMap(20,20)
 
@@ -340,9 +332,9 @@ class DuckOfCards(ShowBase):
 		self.castle = PlayerCastle(self)
 
 		# initialise projectile models
-		self.arrowModel = self.loader.loadModel("arrow1.gltf")
+		self.arrowModel = self.loader.loadModel("assets/arrow2.gltf")
 		self.arrowModelNd = self.render.attachNewNode("arrow-models")
-		self.arrowModel.setScale(0.25)
+		self.arrowModel.setScale(0.1)
 
 		# initialise tower models
 		self.towerCount = 0
@@ -402,7 +394,7 @@ class DuckOfCards(ShowBase):
 	# respond to mouseclick
 	def onMouse(self):
 		if self.choosingTile:
-			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0,0,1))
+			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0.5,0.5,1))
 			self.choosingTile = False
 
 	# camera movement function (step around by blocks of 1x1)
@@ -418,12 +410,12 @@ class DuckOfCards(ShowBase):
 
 	# ray-based tile picker for placing down towers
 	def mouseTask(self, task):
-		if (self.choosingTile):
-			if self.hitTile is not False:
-				#clear hightlighting
-				self.tileMap.getChild(self.hitTile).setColor(0.3,0.9,0.4,1.)
-				self.hitTile = False
+		if self.hitTile is not False:
+			#clear hightlighting
+			self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
+			self.hitTile = False
 
+		if (self.choosingTile): # if the tower placer is on
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 				# get mouse position and traverse tileMap with the pickerRay
 				mousePos = self.mouseWatcherNode.getMouse()
@@ -431,12 +423,15 @@ class DuckOfCards(ShowBase):
 				self.tilePicker.traverse(self.tileMap)
 
 				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
-					self.tpQueue.sortEntries() 			# sort by closest first
+					# sort by closest first
+					self.tpQueue.sortEntries() 			
+					# find tile node and get tile index
 					tile = self.tpQueue.getEntry(0).getIntoNodePath().getNode(2)
-					#tile = self.tpQueue.getEntry(0).getIntoNodePath().findNetTag('tile-**')
 					tileInd = int(tile.getName().split("-")[1]) # trim name to index
 					#print("mouseover" + str(self.tileMap.getChild(tileInd)))
-					self.tileMap.getChild(tileInd).setColor(0.9,1.,0.9,1.) # highlight
+					# highlight on mouseover
+					self.tileMap.getChild(tileInd).setColor(1.2,1.2,1.2,1.0)
+					# save index of hit tile
 					self.hitTile = tileInd
 
 		return task.cont
