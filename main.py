@@ -7,6 +7,7 @@ from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
 from direct.interval.LerpInterval import LerpPosInterval
 from enum import Enum
+from direct.fsm.FSM import FSM
 import simplepbr as spbr 
 
 config_vars = """
@@ -49,8 +50,8 @@ class UI():
 		self.goldDisplayNP.setScale(0.05)
 		self.goldDisplayNP.setPos(-0.9,0., 0.82)
 
-		self.turretButt = DirectButton(text="place tower", scale=0.05, 
-								pos=(-0.3, 0, 0.9), command=base.pickTower)
+		#self.turretButt = DirectButton(text="place tower", scale=0.05, 
+		#						pos=(-0.3, 0, 0.9), command=base.pickTower)
 
 		# construct game over screen elements
 		self.gameOverScreen = DirectDialog(frameSize = (-0.7, 0.7, -0.7, 0.7),
@@ -59,10 +60,19 @@ class UI():
 		self.gameOverScreen.hide()
 		self.gameOverLabel = DirectLabel(text = "Game Over!", parent = self.gameOverScreen,
 										scale = 0.1, pos = (0, 0, 0.2))
-		restartBtn 	= DirectButton(text="Restart", command=base.startGame, pos=(-0.3, 0, -0.2),
+		restartBtn 	= DirectButton(text="Restart", command=base.fsm.exitGameOver, pos=(-0.3, 0, -0.2),
 								parent=self.gameOverScreen, scale=0.1)
 		quitBtn 	= DirectButton(text="Quit", command=base.quit, pos=(0.3, 0, -0.2),
 								parent=self.gameOverScreen, scale=0.1)
+		# construct card menu elements
+		self.cardMenuScreen = DirectDialog(frameSize = (-1., 1., -1., 1.),
+                                   fadeScreen = 0.2,
+                                   relief = DGG.FLAT)
+		self.cardMenuScreen.hide()
+		self.cardMenuLabel = DirectLabel(text = "Welcome! Would you like one of my fine cards?", 
+								parent = self.cardMenuScreen, scale = 0.1, pos = (0, 0.8, 0.2))
+		newTowerBtn	= DirectButton(text="New Tower (10 gold)", command=base.fsm.enterPickTower, 
+								pos=(-0.3, 0, -0.2), parent=self.cardMenuScreen, scale=0.1)
 
 	def update(self):
 		# update hp display
@@ -87,10 +97,13 @@ class UI():
 class PlayerCastle():
 	def __init__(self, sb):
 		self.model = sb.loader.loadModel("playerBase.gltf")
-		self.model.reparentTo(render)
+		self.map = render.attachNewNode("castleMap")
+		self.model.reparentTo(self.map)
 		self.model.setScale(0.2)
 		self.model.setPos(0.,0.,1.)
 		self.model.setColor(0.3,0.35,0.6,1.)
+		self.model.setTag("castle", '0')
+		self.model.node().setIntoCollideMask(BitMask32(0x04))
 
 	def takeDmg(self):
 		global castleHP
@@ -264,6 +277,84 @@ class Tower():
 		newArrow = Arrow(arrowNd, self.node.getPos(), enemy)
 		base.arrowModel.instanceTo(arrowNd)
 
+class GamestateFSM(FSM):
+	def __init__(self): 
+		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
+
+		# enums-style dict of enemy spawn positions
+		self.spawner = {1: Vec3(0.,10.,0.), 
+						2: Vec3(10.,0.,0.), 
+						3: Vec3(0.,-10.,0.), 
+						4: Vec3(-10.,0.,0.)}
+
+		#self.choosingTile = False
+		# spawn waves 								TODO - figure out spawning from both sides
+		#													without incrementing waveNum twice:
+		self.waveSchedule = Sequence(
+			Func(base.spawnEnemyWave, 5, self.spawner[1]),
+			Wait(25.0),
+			Func(base.spawnEnemyWave, 5, self.spawner[2]),
+			Wait(25.0),
+			Func(base.spawnEnemyWave, 5, self.spawner[3]),
+			Wait(25.0),
+			Func(base.spawnEnemyWave, 10, self.spawner[1]),
+			Wait(25.0),
+			Func(base.spawnEnemyWave, 10, self.spawner[4])
+		)
+		self.waveSchedule.start()
+
+	def enterGameplay(self):
+		# resume sequences 
+		self.waveSchedule.resume()
+		for enemy in base.enemies:
+			enemy.move.resume()
+
+	def enterPause(self):
+		# pause sequences
+		self.waveSchedule.pause()
+		for enemy in base.enemies:
+			enemy.move.pause()
+        # show pause state with dimmed screen and changing pause icon
+        # show pause menu
+
+	def exitPause(self):
+		# hide pause menu
+		# return pause icon and screen to normal state
+		pass
+
+	def enterCardMenu(self):
+		# pause sequences
+		self.waveSchedule.pause()
+		for enemy in base.enemies:
+			enemy.move.pause()
+		if self.ui.cardMenuScreen.isHidden():
+			self.ui.cardMenuScreen.show()
+
+	def exitCardMenu(self):
+		if not self.ui.cardMenuScreen.isHidden():
+			self.ui.cardMenuScreen.hide()
+
+	def enterPickTower(self): 
+		# enable toggle to tell updates to listen for clicks and run mouseray collider
+		#self.choosingTile = True
+		pass
+
+	def exitPickTower(self):
+		#self.choosingTile = False
+		pass
+
+	def enterGameOver(self):
+		# pause sequences
+		self.waveSchedule.pause()
+		for enemy in base.enemies:
+			enemy.move.pause()
+		if self.ui.gameOverScreen.isHidden():
+			self.ui.gameOverScreen.show()
+
+	def exitGameOver(self):
+		# reset the game
+		pass
+
 class DuckOfCards(ShowBase):
 	def __init__(self):
 		ShowBase.__init__(self)
@@ -275,15 +366,8 @@ class DuckOfCards(ShowBase):
 		spbr.__init__("Duck of Cards")
 		render.setShaderAuto()
 
-		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.,10.,0.), 
-						2: Vec3(10.,0.,0.), 
-						3: Vec3(0.,-10.,0.), 
-						4: Vec3(-10.,0.,0.)}
-
 		# generate UI
 		self.set_background_color(0.42,0.65,1.,1.)
-		self.ui = UI()
 
 		# create sunlight
 		self.dirLight = DirectionalLight('dirLight')
@@ -308,7 +392,7 @@ class DuckOfCards(ShowBase):
 		self.cam.node().setLens(self.lens)
 
 		# generate ground tile model and instance, creating node map
-		self.tileStage = TextureStage('tileStage')
+		#self.tileStage = TextureStage('tileStage')
 		self.tileModel = self.loader.loadModel("box")
 		self.tileModel.clearTexture()
 		self.groundTex = loader.load3DTexture("assets/ground-tile_#.png")
@@ -317,20 +401,27 @@ class DuckOfCards(ShowBase):
 		self.createMap(20,20)
 
 		# initialise the tile picker
+		self.tPickerRay = CollisionRay()
 		self.tilePicker = CollisionTraverser()
 		self.tpQueue = CollisionHandlerQueue()
 		tpNode = CollisionNode('tp-node')
 		tpNode.setFromCollideMask(BitMask32(0x01))
 		tpNp = self.cam.attachNewNode(tpNode)
-		self.pickerRay = CollisionRay()
-		tpNode.addSolid(self.pickerRay)
+		tpNode.addSolid(self.tPickerRay)
 		self.tilePicker.addCollider(tpNp, self.tpQueue)
 		self.hitTile = False
-		self.choosingTile = False
 		#self.tilePicker.showCollisions(render)
 
 		# create a player castle object
 		self.castle = PlayerCastle(self)
+		self.cPickerRay = CollisionRay()
+		self.castlePicker = CollisionTraverser()
+		self.castleQueue = CollisionHandlerQueue()
+		cscNode = CollisionNode('csc-node')
+		cscNode.setFromCollideMask(BitMask32(0x04))
+		cscNp = self.cam.attachNewNode(cscNode)
+		cscNode.addSolid(self.cPickerRay)
+		self.castlePicker.addCollider(cscNp, self.castleQueue)
 
 		# initialise projectile models
 		self.arrowModel = self.loader.loadModel("assets/arrow2.gltf")
@@ -351,23 +442,13 @@ class DuckOfCards(ShowBase):
 		#self.enemyModel.reparentTo(render)
 		self.enemyModel.setScale(0.1)
 		self.enemyModel.setPos(0.,0.,1.)
-
 		#print(self.enemyModel.findAllMaterials())
 
-		# spawn waves 								TODO - figure out spawning from both sides
-		#													without incrementing waveNum twice:
-		#self.ui.spawnTower(Vec3(3.,5.,1.))
-		self.waveSchedule = Sequence(
-			Func(self.spawnEnemyWave, 5, self.spawner[1]),
-			Wait(25.0),
-			Func(self.spawnEnemyWave, 5, self.spawner[2]),
-			Wait(25.0),
-			Func(self.spawnEnemyWave, 5, self.spawner[3]),
-			Wait(25.0),
-			Func(self.spawnEnemyWave, 10, self.spawner[1]),
-			Wait(25.0),
-			Func(self.spawnEnemyWave, 10, self.spawner[4])
-		).start()
+		# initialise the finite-state machine
+		self.fsm = GamestateFSM()
+
+		# initialise the UI manager
+		self.ui = UI()
 
 		# keyboard controls to move isometrically
 		self.accept("arrow_left", self.move, ["left"])
@@ -375,28 +456,46 @@ class DuckOfCards(ShowBase):
 		self.accept("arrow_up", self.move, ["fwd"])
 		self.accept("arrow_down", self.move, ["back"])
 
+		# listen for left-clicks
 		self.accept("mouse1", self.onMouse)
 
 		# run the mouse and update loops
-		self.taskMgr.add(self.mouseTask, 'mouseTask', taskChain='default')
+		self.taskMgr.add(self.towerPlaceTask, 'towerPlaceTask', taskChain='default')
 		self.taskMgr.add(self.update, "update", taskChain='default')
+
+		self.fsm.demand('Gameplay')
 
 	def update(self, task):
 		dt = globalClock.getDt()
 
 		if not (castleHP > 0):
-			if self.ui.gameOverScreen.isHidden():
-				self.ui.gameOverScreen.show()
+			self.fsm.enterGameOver()
 
 		self.ui.update()
 
 		return task.cont
 
-	# respond to mouseclick
+	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
-		if self.choosingTile:
+		if (self.fsm.state == 'PickTower'): # in tower tile picker state; place tower and exit tile picker state
 			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0.5,0.5,1))
-			self.choosingTile = False
+			self.fsm.demand('Gameplay')
+		else: 
+			if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
+				if self.mouseWatcherNode.hasMouse():
+					mousePos = self.mouseWatcherNode.getMouse()
+					self.cPickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
+					self.castlePicker.traverse(self.castle.map)
+					#print("mouse click " + str(mousePos))
+
+					if (self.castleQueue.getNumEntries() > 0): 	# when mouse ray collides with castle:
+						self.castleQueue.sortEntries()
+						pickedObj = self.castleQueue.getEntry(0).getIntoNodePath()
+						pickedObj = pickedObj.findNetTag('castle')
+						print("queue entry " + str(pickedObj))
+						if pickedObj == self.castle.model:
+							print("castle clicked")
+							self.fsm.request('CardMenu')
 
 	# camera movement function (step around by blocks of 1x1)
 	def move(self, direction):
@@ -410,17 +509,19 @@ class DuckOfCards(ShowBase):
 			self.cam.setPos(self.cam.getPos() + Vec3(-1,-1,0))
 
 	# ray-based tile picker for placing down towers
-	def mouseTask(self, task):
+	def towerPlaceTask(self, task):
+		#self.fsm.demand('PickTower')
+
 		if self.hitTile is not False:
 			#clear hightlighting
 			self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
 			self.hitTile = False
 
-		if (self.choosingTile): # if the tower placer is on
+		if (self.fsm.state == 'PickTower'): # if the tower placer is on
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 				# get mouse position and traverse tileMap with the pickerRay
 				mousePos = self.mouseWatcherNode.getMouse()
-				self.pickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
+				self.tPickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
 				self.tilePicker.traverse(self.tileMap)
 
 				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
@@ -451,6 +552,8 @@ class DuckOfCards(ShowBase):
 				tile.find("**/box").node().setIntoCollideMask(BitMask32(0x01))
 				counter += 1
 
+		# then apply decals like paths, decor/flora&fauna, obstacles etc
+
 	def spawnEnemy(self, pos): 				# spawn an individual creep
 		newEnNd = self.enemyModelNd.attachNewNode("enemy " + str(self.enemyCount))
 		print(str(newEnNd) + " spawning")
@@ -469,10 +572,6 @@ class DuckOfCards(ShowBase):
 			self.spawnSeq.append(Func(self.spawnEnemy,pos))
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.start()
-
-	def pickTower(self): 	# TODO: I should probably use an FSM for this, the card shop menu, 
-							# 		a pause screen/button, and the 'game over' screen
-		self.choosingTile = True
 
 	def spawnTower(self, pos):
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
