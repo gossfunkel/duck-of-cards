@@ -3,7 +3,7 @@ from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32,
 from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Material
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
 from panda3d.core import CollisionSphere, CollisionCapsule, Point3, TextureStage, TexGenAttrib
-from panda3d.core import TransparencyAttrib, CardMaker, Texture
+from panda3d.core import CollisionBox, TransparencyAttrib, CardMaker, Texture
 from direct.gui.OnscreenImage import OnscreenImage
 from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
@@ -191,7 +191,7 @@ class PlayerCastle():
 		self.map = render.attachNewNode("castleMap")
 		self.model.reparentTo(self.map)
 		self.model.setScale(0.2)
-		self.model.setPos(0.5,0.5,1.)
+		self.model.setPos(0.5,0.5,1.5)
 		self.model.setColor(0.3,0.35,0.6,1.)
 		self.model.setTag("castle", '1')
 		self.model.node().setIntoCollideMask(BitMask32(0x04))
@@ -343,6 +343,7 @@ class Tower():
 		self.cdSeq = Sequence(self.cdInt,Func(self.cdOFF))
 		self.scanSeq = Sequence(Func(self.update))
 		self.scanSeq.loop()
+
 		#base.taskMgr.add(self.update, str(self.node)+"_update", taskChain='default')
 		# task replaced with sequence for pausability
 
@@ -350,15 +351,18 @@ class Tower():
 		if not self.onCD: self.attackScan()
 
 	#def update(self, task):
-	#	# scan for enemies if not on cooldown
-	#	if not self.onCD: self.attackScan()
-	#	return task.cont
-	#def pause(self):
-	#	base.taskMgr.getTasksNamed(str(self.node)+"_update").pause() 
-	#   ^ this pause method isn't a thing. using a sequence instead of the task
+		#	# scan for enemies if not on cooldown
+		#	if not self.onCD: self.attackScan()
+		#	return task.cont
+		#def pause(self):
+		#	base.taskMgr.getTasksNamed(str(self.node)+"_update").pause() 
+		#   ^ this pause method isn't a thing. using a sequence instead of the task
 
 	def cdOFF(self):
-		self.onCD = False
+		if not self.onCD: return 1
+		else: 
+			self.onCD = False
+			return 0
 
 	def attackScan(self):
 		# check for intersecting collisionsolids
@@ -392,10 +396,10 @@ class GamestateFSM(FSM):
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
 
 		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.5,10.5,0.), 
-						2: Vec3(10.5,0.5,0.), 
-						3: Vec3(0.5,-9.5,0.), 
-						4: Vec3(-9.5,0.5,0.)}
+		self.spawner = {1: Vec3(0.5,10.5,1.), 
+						2: Vec3(10.5,0.5,1.), 
+						3: Vec3(0.5,-9.5,1.), 
+						4: Vec3(-9.5,0.5,1.)}
 
 		# empty object to be filled with ui
 		self.ui = None
@@ -556,13 +560,13 @@ class DuckOfCards(ShowBase):
 		self.tileModel.setScale(0.5)
 		#self.tileTS = TextureStage('grountTile-texturestage')
 		#self.tileTS.setMode(TextureStage.MReplace)
-		self.groundTex = loader.loadTexture("assets/ground-tile.png")
+		self.groundTex = loader.loadCubeMap("assets/ground-tile_#.png")
 		self.groundTex.set_format(Texture.F_rgba32)
 		#self.groundTex.setWrapU(Texture.WM_clamp)
 		#self.groundTex.setWrapV(Texture.WM_clamp)
 		self.createMap(20,20)
-		self.tileHighlight = loader.loadCubeMap("assets/ground-tile-highlight_#.png")
-		self.tileHighlight.set_format(Texture.F_rgba32)
+		#self.tileHighlight = loader.loadCubeMap("assets/ground-tile-highlight_#.png")
+		#self.tileHighlight.set_format(Texture.F_rgba32)
 
 		# generate path textures and apply to tiles
 		self.pathTex = loader.loadTexture("assets/road1.png")
@@ -580,9 +584,10 @@ class DuckOfCards(ShowBase):
 		tpNp = self.cam.attachNewNode(tpNode)
 		tpNode.addSolid(self.tPickerRay)
 		self.tilePicker.addCollider(tpNp, self.tpQueue)
-		self.hitTile = False
-		# BELOW UNCOMMENTED FOR DEBUG - COLLISIONS SHOULD BE VISIBLE
-		self.tilePicker.showCollisions(render)
+		self.hitTile = 0
+		# UNCOMMENT FOR DEBUG 
+		#self.tilePicker.showCollisions(render)
+		#tpNp.show()
 
 		# create a player castle object
 		self.castle = PlayerCastle(self)
@@ -622,7 +627,7 @@ class DuckOfCards(ShowBase):
 		self.randomDuck = self.loader.loadModel("assets/duckboard1.gltf")
 		self.randomDuck.reparentTo(self.render)
 		self.randomDuck.setScale(0.05)
-		self.randomDuck.setPos(-2.,-2.,1.5)
+		self.randomDuck.setPos(-2.,-2.,2.)
 		self.randomDuck.setH(-90)
 
 		# initialise the finite-state machine
@@ -703,11 +708,11 @@ class DuckOfCards(ShowBase):
 	def towerPlaceTask(self, task):
 		#self.fsm.demand('PickTower')
 
-		if self.hitTile is not False:
+		if self.hitTile != 0:
 			#clear hightlighting
-			#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
-			self.tileMap.getChild(self.hitTile).setTexture(self.groundTex, 1)
-			self.hitTile = False
+			self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
+			#self.tileMap.getChild(self.hitTile).setTexture(self.groundTex, 1)
+			self.hitTile = 0
 
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
@@ -720,14 +725,17 @@ class DuckOfCards(ShowBase):
 					# sort by closest first
 					self.tpQueue.sortEntries() 			
 					# find tile node and get tile index
-					tile = self.tpQueue.getEntry(0).getIntoNodePath().getNode(2)
-					tileInd = int(tile.getName().split("-")[1]) # trim name to index
-					#print("mouseover" + str(self.tileMap.getChild(tileInd)))
+					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
+					#print(tileColl)
+					#tileInd = tileColl.getName().split("-")[1] # trim name 
+					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
+					#print("mouseover: " + str(self.tileMap.getChild(tileInd)))
 					# highlight on mouseover
-					self.tileMap.getChild(tileInd).setTexture(self.tileHighlight, 1)
-					#self.tileMap.getChild(tileInd).setColor(1.2,1.2,1.2,1.0)
+					#self.tileMap.getChild(tileInd).setTexture(TextureStage.getDefault(), self.tileHighlight, 1)
+					self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
 					# save index of hit tile
 					self.hitTile = tileInd
+					#print(tileInd)
 					# TODO : FIX BUG : CURRENTLY RETURNING [-9,-9,0] REGARDLESS OF CLICK
 
 		return task.cont
@@ -740,16 +748,14 @@ class DuckOfCards(ShowBase):
 				# generate tile, starting at -(width/2),-(height/2) and ending at width/2,height/2
 				# e.g. for width & height 10, creates a grid from -5,-5 to 5,5
 				tile = self.tileMap.attachNewNode("tile-" + str(counter))
-				tile.setPos(width/2 - (width-x),length/2 - (length-y),0.)
-				# TODO - FIX THIS - ground textures shouldn't be defined by camera or world position.
-				# 	this could make some neat effects, but I want consistent textures, not relative ones
-				#tile.clearTexture()
-				#tile.setTexture(self.groundTex, 1)
-				#tile.setTexGen(TextureStage.getDefault(), TexGenAttrib.MEyeCubeMap)
-				#tile.setTexProjector(TextureStage.getDefault(), self.tileMap, tile)
-				#tile.setTexPos(TextureStage.getDefault(), 0, 0, 0)
-				#tile.setTexScale(TextureStage.getDefault(), 2.)
-				#tile.setTexScale(TextureStage.getDefault(), 2., 2.)
+				tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
+				tileHitbox = CollisionBox(tile.getPos()/100,.45, .45, .5)
+				tileColl = CollisionNode(str(tile)+'-cnode')
+				tileColl.setIntoCollideMask(BitMask32(0x01))
+				tileNp = tile.attachNewNode(tileColl)
+				tileNp.node().addSolid(tileHitbox)
+				#tileNp.show()
+				tile.setTag("tile-" + str(counter), str(counter))
 				# Im choosing to have regular tiles to make user selections more reliable.
 				# 	This allows for relatively simple procedural modeling by definite units, 
 				# 	rather than freeform user selections, or something even more complex.
@@ -766,11 +772,7 @@ class DuckOfCards(ShowBase):
 				# 	createTerrainCollider(tile)
 				# else: 						# place a regular grass tile
 				self.tileModel.instanceTo(tile)
-				tile.setTag("tile-" + str(counter), str(counter))
-
-				tile.node().setIntoCollideMask(BitMask32(0x01))
 				counter += 1
-
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
 	def placePaths(self):
@@ -809,6 +811,7 @@ class DuckOfCards(ShowBase):
 		self.spawnSeq = None
 
 	def spawnTower(self, pos):
+		pos = pos - Vec3(1.5,1.5,0)
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
 		newTowerNd = self.towerModelNd.attachNewNode("tower " + str(self.towerCount))
 		newTower = Tower(newTowerNd, pos)
