@@ -10,6 +10,7 @@ from direct.gui.DirectGui import *
 from direct.interval.LerpInterval import LerpPosInterval
 from enum import Enum
 from direct.fsm.FSM import FSM
+from random import randint
 #import simplepbr as spbr 
 import complexpbr as cpbr 
 
@@ -51,12 +52,18 @@ waveNum = 0
 	# <Level 1 splash. Initial card offer. Timer for first wave starts as soon as card picked>
 
 # TODO:
+	# = BUGFIX: first arrow is invisible
+	# = BUGFIX: tile highlighting for tower picker is broken
+	# = BUGFIX: sometimes the game crashes because it tries to change the colour of a dead enemy
+	# - procedurally generate paths- have enemies follow path?
 	# - terminal-style output/dialogue at the bottom left
-	# - change button in menu for cards
+	# - cleanup and refactor code into a couple of files (enemies, buildings, friendlies, ui)
+	# - improve card menu and add more options
 	# - add pond and ducks
+	# - add more enemies and bigger waves
 	# - set up initial card offer
 	# - add more card options
-	# - add path decals on ground - have enemies follow path?
+	# - give towers more prioritising options (furthest forward, closest, highest hp etc)
 	# - update enemy, tower, and castle models
 	# - add more terrain/some random plant sprites
 	# - add tower models for other tower types (magic,fire,sniper,bomb,poison)
@@ -205,15 +212,35 @@ class PlayerCastle():
 				Wait(0.05),
 				Func(self.model.setColor,0.3,0.35,0.6,1.)).start()
 
-class Enemy():
+class Enemy(FSM):
 	def __init__(self, enemyNode, pos, speed):
+		FSM.__init__(self, (str(enemyNode) + 'FSM')) # must be called when overloading
+
 		self.node = enemyNode
 		self.node.setPos(pos)
 		self.node.setColor(1.,0.5,0.5,1.)
 		#self.node.setH(-30)
 		# modified target vector to prevent enemies flying into the air as they approach castle
 		self.targetPos = base.castle.model.getPos() - Vec3(0.,0.,1.)
-		self.node.lookAt(self.targetPos)
+		
+		# make them look where they're going
+		#self.node.lookAt(self.targetPos)
+		if (self.targetPos.getX() - pos.getX() > 1 or self.targetPos.getX() - pos.getX() < -1):
+			# entity and target x are more than 1 unit apart
+			if (self.targetPos.getX() > pos.getX()): # target is further 'up' x relative to entity
+				self.demand('X')
+				print(str(self.node)+" facing X")
+			else: 								# target is lower down x-axis relative to entity
+				self.demand('Xneg')
+				print(str(self.node)+" facing Xneg")
+		else: # entity and target x are less than 1 unit apart (aligned on x axis)
+			if (self.targetPos.getY() > pos.getY()): # target is further 'up' y relative to entity
+				self.demand('Y')
+				print(str(self.node)+" facing Y")
+			else: 								# target is lower down y-axis relative to entity
+				self.demand('Yneg')
+				print(str(self.node)+" facing Yneg")
+
 		self.hp = 20.0
 		self.speed = speed # allows slowing and rushing effects
 
@@ -233,6 +260,62 @@ class Enemy():
 		self.moveSeq.start()
 
 		base.taskMgr.add(self.update, "update-"+str(self.node), taskChain='default')
+
+	def enterX(self):
+		# TODO lerp round
+		self.node.lookAt(self.node.getX()+1, self.node.getY(), self.node.getZ())
+
+	def filterX(self, request, args): # process input while facing +x
+		if (request == 'Left'):
+			return 'Yneg'
+		elif (request == 'Right'):
+			return 'Y'
+		elif (request == 'Flip'):
+			return 'Xneg'
+		else:
+			return None
+
+	def enterY(self):
+		# TODO lerp round
+		self.node.lookAt(self.node.getX(), self.node.getY()+1,self.node.getZ())
+
+	def filterY(self, request, args): # process input while facing +x
+		if (request == 'Left'):
+			return 'X'
+		elif (request == 'Right'):
+			return 'Xneg'
+		elif (request == 'Flip'):
+			return 'Yneg'
+		else:
+			return None
+
+	def enterXneg(self):
+		# TODO lerp round
+		self.node.lookAt(self.node.getX()-1, self.node.getY(),self.node.getZ())
+
+	def filterXneg(self, request, args): # process input while facing +x
+		if (request == 'Left'):
+			return 'Y'
+		elif (request == 'Right'):
+			return 'Yneg'
+		elif (request == 'Flip'):
+			return 'X'
+		else:
+			return None
+
+	def enterYneg(self):
+		# TODO lerp round
+		self.node.lookAt(self.node.getX(), self.node.getY()-1,self.node.getZ())
+
+	def filterYneg(self, request, args): # process input while facing +x
+		if (request == 'Left'):
+			return 'Xneg'
+		elif (request == 'Right'):
+			return 'X'
+		elif (request == 'Flip'):
+			return 'Yneg'
+		else:
+			return None
 
 	def update(self, task):
 		if (self.hp <= 0.0): # die if health gets too low
@@ -396,10 +479,10 @@ class GamestateFSM(FSM):
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
 
 		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.5,10.5,1.), 
-						2: Vec3(10.5,0.5,1.), 
-						3: Vec3(0.5,-9.5,1.), 
-						4: Vec3(-9.5,0.5,1.)}
+		self.spawner = {1: Vec3(0.5,9.5,0.5), 
+						2: Vec3(9.5,0.5,0.5), 
+						3: Vec3(0.5,-9.5,0.5), 
+						4: Vec3(-9.5,0.5,0.5)}
 
 		# empty object to be filled with ui
 		self.ui = None
@@ -541,7 +624,9 @@ class DuckOfCards(ShowBase):
 
 		# initialise the dimetric camera (26.565deg for square pixels)
 		self.cam.setPos(0.,0.,3.)
-		self.cam.setHpr(-45,-26.565,0)
+		#self.cam.setHpr(-45,-26.565,0)
+		# isometric angle! 35.264deg
+		self.cam.setHpr(-45,-35.264,0)
 		#self.cam.setR(45) 			 # global 45deg roll
 		#self.cam.setY(-45) 		 # global 45deg yaw
 		#self.cam.setR(self.cam, 45) # local  45deg roll
@@ -555,9 +640,12 @@ class DuckOfCards(ShowBase):
 		# generate ground tile model and instance, creating node map
 		#self.tileStage = TextureStage('tileStage')
 		self.tileMap = self.render.attachNewNode("tileMap")
+		self.lakeTiles = self.render.attachNewNode("lakeTiles")
 		self.tileModel = self.loader.loadModel("assets/groundTile.gltf")
+		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.gltf")
 		#self.tileModel.clearTexture()
 		self.tileModel.setScale(0.5)
+		self.lakeTileModel.setScale(0.5)
 		#self.tileTS = TextureStage('grountTile-texturestage')
 		#self.tileTS.setMode(TextureStage.MReplace)
 		self.groundTex = loader.loadCubeMap("assets/ground-tile_#.png")
@@ -669,7 +757,7 @@ class DuckOfCards(ShowBase):
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower'): # in tower tile picker state; place tower and exit tile picker state
-			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0.5,0.5,1.5))
+			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(-0.5,-0.5,1.))
 			self.fsm.demand('Gameplay')
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
@@ -742,36 +830,37 @@ class DuckOfCards(ShowBase):
 
 	def createMap(self, width, length): 	# generate pickable tiles to place towers on
 		counter = 0
-		
+		lakeSpawnPoint = [randint(2,int(width)-2), randint(2,int(length)-2)]
+		print("lake spawn generation: " + str(lakeSpawnPoint))
 		for y in range(length) :
 			for x in range(width):
 				# generate tile, starting at -(width/2),-(height/2) and ending at width/2,height/2
-				# e.g. for width & height 10, creates a grid from -5,-5 to 5,5
-				tile = self.tileMap.attachNewNode("tile-" + str(counter))
-				tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
-				tileHitbox = CollisionBox(tile.getPos()/100,.45, .45, .5)
-				tileColl = CollisionNode(str(tile)+'-cnode')
-				tileColl.setIntoCollideMask(BitMask32(0x01))
-				tileNp = tile.attachNewNode(tileColl)
-				tileNp.node().addSolid(tileHitbox)
-				#tileNp.show()
-				tile.setTag("tile-" + str(counter), str(counter))
+				# 	e.g. for width & height 10, creates a grid from -5,-5 to 5,5
 				# Im choosing to have regular tiles to make user selections more reliable.
 				# 	This allows for relatively simple procedural modeling by definite units, 
 				# 	rather than freeform user selections, or something even more complex.
 				# The actual pond generation will happen in a vertex shader, but it will
 				# 	need a texture tag or application to specific objects to work.
-				# 
-				# Pseudocode for the 'pond' and 'impassable terrain' tile types:
-				# if (place pond at x,y)
-				# 	self.pondTileModel.instanceTo(tile)
-				# 	tile.setTag("tile-pond-" + str(counter),str(counter))					
-				# elseif (place terrain at x,y)
-				# 	self.terrainTileModel.instanceTo(tile)
-				# 	tile.setTag("tile-terrain-" + str(counter),str(counter))
-				# 	createTerrainCollider(tile)
-				# else: 						# place a regular grass tile
-				self.tileModel.instanceTo(tile)
+				if (x==lakeSpawnPoint[0] and y==lakeSpawnPoint[1]):
+					tile = self.lakeTiles.attachNewNode("laketile-" + str(counter))
+					tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
+					self.lakeTileModel.instanceTo(tile)
+					tile.setTag("tile-lake-" + str(counter),str(counter))					
+					# elseif (place terrain at x,y)
+					# 	self.terrainTileModel.instanceTo(tile)
+					# 	tile.setTag("tile-terrain-" + str(counter),str(counter))
+					# 	createTerrainCollider(tile)
+				else: 						# place a regular grass tile
+					tile = self.tileMap.attachNewNode("tile-" + str(counter))
+					tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
+					tileHitbox = CollisionBox(tile.getPos()/100,.45, .45, .5)
+					tileColl = CollisionNode(str(tile)+'-cnode')
+					tileColl.setIntoCollideMask(BitMask32(0x01))
+					tileNp = tile.attachNewNode(tileColl)
+					tileNp.node().addSolid(tileHitbox)
+					self.tileModel.instanceTo(tile)
+					tile.setTag("tile-" + str(counter), str(counter))
+					#tileNp.show() 					# uncomment to show hitboxes
 				counter += 1
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
@@ -811,7 +900,7 @@ class DuckOfCards(ShowBase):
 		self.spawnSeq = None
 
 	def spawnTower(self, pos):
-		pos = pos - Vec3(1.5,1.5,0)
+		#pos = pos - Vec3(1.5,1.5,0)
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
 		newTowerNd = self.towerModelNd.attachNewNode("tower " + str(self.towerCount))
 		newTower = Tower(newTowerNd, pos)
