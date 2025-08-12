@@ -13,6 +13,7 @@ from direct.fsm.FSM import FSM
 from random import randint
 #import simplepbr as spbr 
 import complexpbr as cpbr 
+import SpriteModel as spritem
 
 config_vars = """
 win-size 1200 800
@@ -211,155 +212,6 @@ class PlayerCastle():
 		Sequence(Func(self.model.setColor,1.2,0.1,0.1,1.),
 				Wait(0.05),
 				Func(self.model.setColor,0.3,0.35,0.6,1.)).start()
-
-class Enemy(FSM):
-	def __init__(self, enemyNode, pos, speed):
-		FSM.__init__(self, (str(enemyNode) + 'FSM')) # must be called when overloading
-
-		self.node = enemyNode
-		self.node.setPos(pos)
-		self.node.setColor(1.,0.5,0.5,1.)
-		#self.node.setH(-30)
-		# modified target vector to prevent enemies flying into the air as they approach castle
-		self.targetPos = base.castle.model.getPos() - Vec3(0.,0.,1.)
-		
-		# make them look where they're going
-		#self.node.lookAt(self.targetPos)
-		if (self.targetPos.getX() - pos.getX() > 1 or self.targetPos.getX() - pos.getX() < -1):
-			# entity and target x are more than 1 unit apart
-			if (self.targetPos.getX() > pos.getX()): # target is further 'up' x relative to entity
-				self.demand('X')
-				print(str(self.node)+" facing X")
-			else: 								# target is lower down x-axis relative to entity
-				self.demand('Xneg')
-				print(str(self.node)+" facing Xneg")
-		else: # entity and target x are less than 1 unit apart (aligned on x axis)
-			if (self.targetPos.getY() > pos.getY()): # target is further 'up' y relative to entity
-				self.demand('Y')
-				print(str(self.node)+" facing Y")
-			else: 								# target is lower down y-axis relative to entity
-				self.demand('Yneg')
-				print(str(self.node)+" facing Yneg")
-
-		self.hp = 20.0
-		self.speed = speed # allows slowing and rushing effects
-
-						# CollisionCapsule(ax, ay, az, bx, by, bz, radius)
-		self.hitSphere = CollisionCapsule(0.09, -0.1, 1.2,0.09, -0.1, 1.45, .12)
-		hcnode = CollisionNode('{}-cnode'.format(str(self.node)))
-		hcnode.setIntoCollideMask(BitMask32(0x02))
-		self.hitNp = self.node.attachNewNode(hcnode)
-		self.hitNp.node().addSolid(self.hitSphere)
-		#self.hitNp.show() 								# uncomment to show hitbox
-
-		self.move = self.node.posInterval(20./self.speed, self.targetPos, self.node.getPos())
-		self.moveSeq = Sequence(
-			self.move,
-			Func(self.despawnAtk)
-		)
-		self.moveSeq.start()
-
-		base.taskMgr.add(self.update, "update-"+str(self.node), taskChain='default')
-
-	def enterX(self):
-		# TODO lerp round
-		self.node.lookAt(self.node.getX()+1, self.node.getY(), self.node.getZ())
-
-	def filterX(self, request, args): # process input while facing +x
-		if (request == 'Left'):
-			return 'Yneg'
-		elif (request == 'Right'):
-			return 'Y'
-		elif (request == 'Flip'):
-			return 'Xneg'
-		else:
-			return None
-
-	def enterY(self):
-		# TODO lerp round
-		self.node.lookAt(self.node.getX(), self.node.getY()+1,self.node.getZ())
-
-	def filterY(self, request, args): # process input while facing +x
-		if (request == 'Left'):
-			return 'X'
-		elif (request == 'Right'):
-			return 'Xneg'
-		elif (request == 'Flip'):
-			return 'Yneg'
-		else:
-			return None
-
-	def enterXneg(self):
-		# TODO lerp round
-		self.node.lookAt(self.node.getX()-1, self.node.getY(),self.node.getZ())
-
-	def filterXneg(self, request, args): # process input while facing +x
-		if (request == 'Left'):
-			return 'Y'
-		elif (request == 'Right'):
-			return 'Yneg'
-		elif (request == 'Flip'):
-			return 'X'
-		else:
-			return None
-
-	def enterYneg(self):
-		# TODO lerp round
-		self.node.lookAt(self.node.getX(), self.node.getY()-1,self.node.getZ())
-
-	def filterYneg(self, request, args): # process input while facing +x
-		if (request == 'Left'):
-			return 'Xneg'
-		elif (request == 'Right'):
-			return 'X'
-		elif (request == 'Flip'):
-			return 'Yneg'
-		else:
-			return None
-
-	def update(self, task):
-		if (self.hp <= 0.0): # die if health gets too low
-			self.despawnDie()
-			return task.done
-		# otherwise, keep going :)
-		return task.cont
-
-	def despawnAtk(self):
-		# damage the castle
-		# and do a wee animation?
-		base.castle.takeDmg()
-
-		# clean up the node
-		print(str(self.node) + " despawning")
-		self.node.removeNode() 
-
-	def despawnDie(self):
-		global playerGold
-		# stop moving and don't damage the castle!
-		self.moveSeq.clearIntervals()
-		# remove update task from taskMgr
-		if (base.taskMgr.getTasksNamed(str(self.node)+"_update") != None):
-			base.taskMgr.remove(base.taskMgr.getTasksNamed(str(self.node)+"_update"))
-		# do a wee animation?
-		# give player gold
-		playerGold += 5
-		# clean up the node
-		print(str(self.node) + " dying")
-		self.node.removeNode() 
-
-	def damage(self, dmg):
-		# take the damage
-		self.hp -= dmg
-		# flash red for a moment
-		if self.hp > 0:
-			Sequence(Func(self.node.setColor,1.,0.,0.,1.),
-					Wait(0.1),
-					Func(self.node.setColor,1.,0.5,0.5,1.)).start()
-		#if (self.hp <= 0.0): # die if health gets too low
-		#else: 
-		#	self.despawnDie()
-		# this seems to cause despawnDie to run twice, somehow. I should do proper garbage collection
-		# on these objects, and remove the enemies as well as their nodes
 
 class Arrow():
 	def __init__(self, arrowNd, pos, enemyId):
@@ -597,9 +449,6 @@ class DuckOfCards(ShowBase):
 	def __init__(self):
 		ShowBase.__init__(self)
 
-		# temporary integer ticker to rotate the random duck
-		self.t = 0
-
 		# disable default panda3d mouse camera controls
 		base.disableMouse()
 
@@ -712,11 +561,12 @@ class DuckOfCards(ShowBase):
 		#print(self.enemyModel.findAllMaterials())
 
 		# load a random duck as a placeholder for civilian ducks
-		self.randomDuck = self.loader.loadModel("assets/duckboard1.gltf")
-		self.randomDuck.reparentTo(self.render)
-		self.randomDuck.setScale(0.05)
-		self.randomDuck.setPos(-2.,-2.,2.)
-		self.randomDuck.setH(-90)
+		self.duckModel = self.loader.loadModel("assets/duckboard1.gltf")
+		self.duckNp = self.render.attachNewNode("duck-models")
+		self.duckModel.setScale(0.05)
+		#self.duckModel.setPos(-2.,-2.,2.)
+		self.duckModel.setH(-90)
+		self.randomDuck = spritem.NormalInnocentDuck("an-innocent-duck", Vec3(-2.,-2.,2.), 1.)
 
 		# initialise the finite-state machine
 		self.fsm = GamestateFSM()
@@ -741,11 +591,6 @@ class DuckOfCards(ShowBase):
 
 	def update(self, task):
 		dt = globalClock.getDt()
-
-		if self.fsm.state == 'Gameplay':
-			self.t += 1
-		
-		self.randomDuck.setH(self.t%360)
 
 		if not (castleHP > 0):
 			self.fsm.demand('GameOver')
@@ -875,9 +720,9 @@ class DuckOfCards(ShowBase):
 		# apply decal
 
 	def spawnEnemy(self, pos): 				# spawn an individual creep
-		newEnNd = self.enemyModelNd.attachNewNode("enemy " + str(self.enemyCount))
+		newEnNd = self.enemyModelNd.attachNewNode("enemy-" + str(self.enemyCount))
 		print(str(newEnNd) + " spawning")
-		newEnemy = Enemy(newEnNd, pos, 1.)
+		newEnemy = spritem.Enemy(newEnNd, pos, 1.)
 		self.enemyModel.instanceTo(newEnemy.node)
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
