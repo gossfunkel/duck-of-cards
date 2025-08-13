@@ -6,18 +6,20 @@ from direct.fsm.FSM import FSM
 class SpriteMod(FSM):
 	def __init__(self, name, pos, speed):
 		FSM.__init__(self, (str(name) + 'FSM')) # must be called when overloading
+
 		self.pos = pos
 		self.speed = speed
 
 	def enterX(self):
 		# TODO lerp round
-		self.node.lookAt(self.node.getX()+1, self.node.getY(), self.node.getZ())
+		print(self.node.getX()+5, self.node.getY(), self.node.getZ())
+		self.node.lookAt(self.node.getX()+5, self.node.getY(), self.node.getZ())
 
 	def filterX(self, request, args): # process input while facing +x
 		if (request == 'Left'):
-			return 'Yneg'
-		elif (request == 'Right'):
 			return 'Y'
+		elif (request == 'Right'):
+			return 'Yneg'
 		elif (request == 'Flip'):
 			return 'Xneg'
 		else:
@@ -25,13 +27,13 @@ class SpriteMod(FSM):
 
 	def enterY(self):
 		# TODO lerp round
-		self.node.lookAt(self.node.getX(), self.node.getY()+1,self.node.getZ())
+		self.node.lookAt(self.node.getX(), self.node.getY()+5,self.node.getZ())
 
 	def filterY(self, request, args): # process input while facing +x
 		if (request == 'Left'):
-			return 'X'
-		elif (request == 'Right'):
 			return 'Xneg'
+		elif (request == 'Right'):
+			return 'X'
 		elif (request == 'Flip'):
 			return 'Yneg'
 		else:
@@ -39,13 +41,13 @@ class SpriteMod(FSM):
 
 	def enterXneg(self):
 		# TODO lerp round
-		self.node.lookAt(self.node.getX()-1, self.node.getY(),self.node.getZ())
+		self.node.lookAt(self.node.getX()-5, self.node.getY(),self.node.getZ())
 
 	def filterXneg(self, request, args): # process input while facing +x
 		if (request == 'Left'):
-			return 'Y'
-		elif (request == 'Right'):
 			return 'Yneg'
+		elif (request == 'Right'):
+			return 'Y'
 		elif (request == 'Flip'):
 			return 'X'
 		else:
@@ -53,28 +55,31 @@ class SpriteMod(FSM):
 
 	def enterYneg(self):
 		# TODO lerp round
-		self.node.lookAt(self.node.getX(), self.node.getY()-1,self.node.getZ())
+		self.node.lookAt(self.node.getX(), self.node.getY()-5,self.node.getZ())
 
 	def filterYneg(self, request, args): # process input while facing +x
 		if (request == 'Left'):
-			return 'Xneg'
-		elif (request == 'Right'):
 			return 'X'
+		elif (request == 'Right'):
+			return 'Xneg'
 		elif (request == 'Flip'):
 			return 'Yneg'
 		else:
 			return None
 
 class Enemy(SpriteMod):
-	def __init__(self, enemyNode, pos, speed):
-		super().__init__(str(enemyNode), pos, speed)
+	def __init__(self, name, pos, speed):
+		super().__init__(str(name), pos, speed)
 
-		self.node = enemyNode
+		print(str(name) + " spawning")
+		self.node = base.enemyModelNd.attachNewNode(name)
 		self.node.setPos(pos)
 		self.node.setColor(1.,0.5,0.5,1.)
 		#self.node.setH(-30)
 		# modified target vector to prevent enemies flying into the air as they approach castle
 		self.targetPos = base.castle.model.getPos() - Vec3(0.,0.,1.)
+
+		base.enemyModel.instanceTo(self.node)
 		
 		# make them look where they're going
 		#self.node.lookAt(self.targetPos)
@@ -95,7 +100,8 @@ class Enemy(SpriteMod):
 				#print(str(self.node)+" facing Yneg")
 
 		self.hp = 20.0
-		self.speed = speed # allows slowing and rushing effects
+		
+		#self.speed = speed # allows slowing and rushing effects
 
 						# CollisionCapsule(ax, ay, az, bx, by, bz, radius)
 		self.hitSphere = CollisionCapsule(0.09, -0.1, 1.2,0.09, -0.1, 1.45, .12)
@@ -110,13 +116,18 @@ class Enemy(SpriteMod):
 			self.move,
 			Func(self.despawnAtk)
 		)
+
+		self.dmgSeq = Sequence(Func(self.node.setColor,1.,0.,0.,1.),
+				Wait(0.1),
+				Func(self.node.setColor,1.,0.5,0.5,1.))
+
 		self.moveSeq.start()
 
 		base.taskMgr.add(self.update, "update-"+str(self.node), taskChain='default')
 
 	def update(self, task):
 		if (self.hp <= 0.0): # die if health gets too low
-			self.despawnDie()
+			#self.despawnDie()
 			return task.done
 		# otherwise, keep going :)
 		return task.cont
@@ -131,15 +142,15 @@ class Enemy(SpriteMod):
 		self.node.removeNode() 
 
 	def despawnDie(self):
-		global playerGold
 		# stop moving and don't damage the castle!
 		self.moveSeq.clearIntervals()
+		self.dmgSeq.clearIntervals()
 		# remove update task from taskMgr
 		if (base.taskMgr.getTasksNamed(str(self.node)+"_update") != None):
 			base.taskMgr.remove(base.taskMgr.getTasksNamed(str(self.node)+"_update"))
 		# do a wee animation?
 		# give player gold
-		playerGold += 5
+		base.giveGold(5)
 		# clean up the node
 		print(str(self.node) + " dying")
 		self.node.removeNode() 
@@ -147,25 +158,22 @@ class Enemy(SpriteMod):
 	def damage(self, dmg):
 		# take the damage
 		self.hp -= dmg
-		# flash red for a moment
-		if self.hp > 0:
-			Sequence(Func(self.node.setColor,1.,0.,0.,1.),
-					Wait(0.1),
-					Func(self.node.setColor,1.,0.5,0.5,1.)).start()
-		#if (self.hp <= 0.0): # die if health gets too low
-		#else: 
-		#	self.despawnDie()
+
+		# then flash red for a moment
+		if self.hp > 0: self.dmgSeq.start()
+		else: 
+			self.despawnDie()
 		# this seems to cause despawnDie to run twice, somehow. I should do proper garbage collection
 		# on these objects, and remove the enemies as well as their nodes
 
 class NormalInnocentDuck(SpriteMod): 
-	def __init__(self, node, pos, speed):
-		super().__init__(str(node), pos, speed)
+	def __init__(self, name, pos, speed):
+		super().__init__(str(name), pos, speed)
 		print("spawning a normal duck")
-
-		self.node = base.duckNp.attachNewNode(node)
+		self.node = base.duckNp.attachNewNode(name)
 		self.node.setPos(pos)
-		self.speed = speed
+		self.demand('Xneg')
+		#self.speed = speed
 
 		self.hp = 1000000
 
@@ -183,15 +191,18 @@ class NormalInnocentDuck(SpriteMod):
 		# rotate the random duck
 		if ((self.t % 90) == 1):
 			print("duck turning")
-			self.turnRight()
+			self.demand('Right')
+			#self.turnRight()
 
-	def turnRight(self):
-		self.demand('Right')
+		return task.cont
 
-	def turnLeft(self):
-		self.demand('Left')
+	#def turnRight(self):
+	#	self.demand('Right')
 
-	def turnAround(self):
-		self.demand('Flip')
+	#def turnLeft(self):
+	#	self.demand('Left')
+
+	#def turnAround(self):
+	#	self.demand('Flip')
 
 # load models in here?

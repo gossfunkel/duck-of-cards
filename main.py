@@ -25,6 +25,8 @@ threading-model Cull/Draw
 
 loadPrcFileData("", config_vars)
 
+# GLOBAL VARIABLES
+
 castleHP = 100
 playerGold = 10
 waveNum = 0
@@ -55,7 +57,7 @@ waveNum = 0
 # TODO:
 	# = BUGFIX: first arrow is invisible
 	# = BUGFIX: tile highlighting for tower picker is broken
-	# = BUGFIX: sometimes the game crashes because it tries to change the colour of a dead enemy
+	# = BUGFIX: where did the paths go? 
 	# - procedurally generate paths- have enemies follow path?
 	# - terminal-style output/dialogue at the bottom left
 	# - cleanup and refactor code into a couple of files (enemies, buildings, friendlies, ui)
@@ -564,7 +566,6 @@ class DuckOfCards(ShowBase):
 		self.duckModel = self.loader.loadModel("assets/duckboard1.gltf")
 		self.duckNp = self.render.attachNewNode("duck-models")
 		self.duckModel.setScale(0.05)
-		#self.duckModel.setPos(-2.,-2.,2.)
 		self.duckModel.setH(-90)
 		self.randomDuck = spritem.NormalInnocentDuck("an-innocent-duck", Vec3(-2.,-2.,2.), 1.)
 
@@ -625,6 +626,11 @@ class DuckOfCards(ShowBase):
 			print(mousePos)
 			if ((mousePos[0] > 1.2 or mousePos[0] < -1.2) or (mousePos[1] > 0.8 or mousePos[1] < -0.8)):
 				self.fsm.demand('Gameplay')
+
+	def giveGold(self, amount):
+		global playerGold
+		playerGold += int(amount)
+		return playerGold
 
 	# camera movement function (step around by blocks of 1x1)
 	def move(self, direction):
@@ -715,15 +721,12 @@ class DuckOfCards(ShowBase):
 		for tile in self.tileMap.children: # currently covers the cardinal directions
 			if ((tile.getX() == 0 and tile.getY() != 0) or (tile.getY() == 0 and tile.getX() != 0)):
 				tile.setTexture(self.pathTS, self.pathTex)
-				#tile.setTexPos(TextureStage.getDefault(), 1., 0., 0.)
+				tile.setTexPos(TextureStage.getDefault(), 1., 1., 0.)
 		#tile = self.tileMap.getChild(1)
 		# apply decal
 
 	def spawnEnemy(self, pos): 				# spawn an individual creep
-		newEnNd = self.enemyModelNd.attachNewNode("enemy-" + str(self.enemyCount))
-		print(str(newEnNd) + " spawning")
-		newEnemy = spritem.Enemy(newEnNd, pos, 1.)
-		self.enemyModel.instanceTo(newEnemy.node)
+		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, 1.)
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
 
