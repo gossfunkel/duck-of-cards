@@ -58,9 +58,18 @@ waveNum = 0
 	# = BUGFIX: first arrow is invisible
 	# = BUGFIX: tile highlighting for tower picker is broken
 	# = BUGFIX: where did the paths go? 
+	# = BUGFIX: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath)
+	# = BUGFIX: when trying to enable hoverover textures for tile picker, we hit this terminal error:
+		# Assertion failed: image_ptr >= orig_image_ptr && image_ptr + view_si  File "C:\Users\gossf\Documents\Games-Kate\duck-of-cards\main.py", line 794, in <module>
+		#ze <= or  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 3331, in run: self.taskMgr.run()
+		#_ptr  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 2158, in __igLoop: self.graphicsEngine.renderFrame()
+	 	#+ tex->get_raAssertionError: image_ptr >= orig_image_ptr && image_ptr + view_size <= orig_image_ptr + tex->get_ram_mipmap_image_size(n) at line 13787 of c:\buildslave\sdk-windows-amd64\build\panda\src\glstuff\glGraphicsStateGuardian_src.cxx
+		#m_mipmap_image_size(n) at line 13787 of c:\buildslave\sdk-windows-amd64\buiException ignored in atexit callback <function exitfunc at 0x00000219BE9BE0C0>ld\p:
+		#anTraceback (most recent call last): da\src  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 84, in exitfunc
+		#\glstuff\glGraphicsStateGuardian_src.cxx
+		#:display:gsg:glgsg(error): Could not load ground-tile-highlight_0
 	# - procedurally generate paths- have enemies follow path?
 	# - terminal-style output/dialogue at the bottom left
-	# - cleanup and refactor code into a couple of files (enemies, buildings, friendlies, ui)
 	# - improve card menu and add more options
 	# - add pond and ducks
 	# - add more enemies and bigger waves
@@ -333,10 +342,10 @@ class GamestateFSM(FSM):
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
 
 		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.5,9.5,0.5), 
-						2: Vec3(9.5,0.5,0.5), 
-						3: Vec3(0.5,-9.5,0.5), 
-						4: Vec3(-9.5,0.5,0.5)}
+		self.spawner = {1: Vec3(0.5,9.5,0.5),  # Y position (top left)
+						2: Vec3(9.5,0.5,0.5),  # X position (top right)
+						3: Vec3(0.5,-9.5,0.5), # Yneg position (bottom right)
+						4: Vec3(-9.5,0.5,0.5)} # Xneg position (bottomg left)
 
 		# empty object to be filled with ui
 		self.ui = None
@@ -457,8 +466,16 @@ class DuckOfCards(ShowBase):
 		# initialise pbr for models, and shaders
 		#spbr.__init__("Duck of Cards")
 		cpbr.apply_shader(self.render)
-		#cpbr.screenspace_init()
+		cpbr.screenspace_init()
 		render.setShaderAuto()
+        # example of how to turn on Global Illumination (GI)
+		#self.render.set_shader_input('shadow_boost', 0.3)
+		# example of how to set up bloom -- complexpbr.screenspace_init() must have been called first
+		#screen_quad = base.screen_quad
+        #screen_quad.set_shader_input("bloom_intensity", 0.25)
+		#screen_quad.set_shader_input("bloom_threshold", 0.3)
+		#screen_quad.set_shader_input("bloom_blur_width", 20)
+		#screen_quad.set_shader_input("bloom_samples", 4)
 
 		# generate UI
 		#self.set_background_color(0.42,0.65,1.,1.)
@@ -482,7 +499,7 @@ class DuckOfCards(ShowBase):
 		#self.cam.setY(-45) 		 # global 45deg yaw
 		#self.cam.setR(self.cam, 45) # local  45deg roll
 		self.cam.setPos(self.cam, self.cam.getPos() + Vec3(0.,-12.,-4.))
-		# orthographic lens to commit to isometric-style dimetric view
+		# orthographic lens to commit to isometric/dimetric view
 		self.lens = OrthographicLens()
 		self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
 		self.lens.setNearFar(-40,40)
@@ -580,6 +597,8 @@ class DuckOfCards(ShowBase):
 		self.accept("arrow_right", self.move, ["right"])
 		self.accept("arrow_up", self.move, ["fwd"])
 		self.accept("arrow_down", self.move, ["back"])
+		self.accept("page_up", self.move, ["zoomIn"])
+		self.accept("page_down", self.move, ["zoomOut"])
 
 		# listen for left-clicks
 		self.accept("mouse1", self.onMouse)
@@ -603,7 +622,7 @@ class DuckOfCards(ShowBase):
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower'): # in tower tile picker state; place tower and exit tile picker state
-			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(-0.5,-0.5,1.))
+			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0.,0,0.6))
 			self.fsm.demand('Gameplay')
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
@@ -642,6 +661,10 @@ class DuckOfCards(ShowBase):
 			self.cam.setPos(self.cam.getPos() + Vec3(1,1,0))
 		elif direction == 'back':
 			self.cam.setPos(self.cam.getPos() + Vec3(-1,-1,0))
+		elif direction == 'zoomIn':
+			self.cam.setScale(self.cam.getScale()*0.8)
+		elif direction == 'zoomOut':
+			self.cam.setScale(self.cam.getScale()*1.2)
 
 	# ray-based tile picker for placing down towers
 	def towerPlaceTask(self, task):
@@ -721,8 +744,7 @@ class DuckOfCards(ShowBase):
 		for tile in self.tileMap.children: # currently covers the cardinal directions
 			if ((tile.getX() == 0 and tile.getY() != 0) or (tile.getY() == 0 and tile.getX() != 0)):
 				tile.setTexture(self.pathTS, self.pathTex)
-				tile.setTexPos(TextureStage.getDefault(), 1., 1., 0.)
-		#tile = self.tileMap.getChild(1)
+				#tile.setTexPos(TextureStage.getDefault(), 1., 1., 0.)
 		# apply decal
 
 	def spawnEnemy(self, pos): 				# spawn an individual creep
