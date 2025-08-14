@@ -118,7 +118,7 @@ class Enemy(SpriteMod):
 		)
 
 		self.dmgSeq = Sequence(Func(self.node.setColor,1.,0.,0.,1.),
-				Wait(0.1),
+				Wait(0.05),
 				Func(self.node.setColor,1.,0.5,0.5,1.))
 
 		self.moveSeq.start()

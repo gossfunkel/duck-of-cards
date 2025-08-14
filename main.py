@@ -55,9 +55,7 @@ waveNum = 0
 	# <Level 1 splash. Initial card offer. Timer for first wave starts as soon as card picked>
 
 # TODO:
-	# = BUGFIX: first arrow is invisible
-	# = BUGFIX: tile highlighting for tower picker is broken
-	# = BUGFIX: where did the paths go? 
+	# = BUGFIX: texture problems with paths and highlight not rendering correctly
 	# = BUGFIX: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath)
 	# = BUGFIX: when trying to enable hoverover textures for tile picker, we hit this terminal error:
 		# Assertion failed: image_ptr >= orig_image_ptr && image_ptr + view_si  File "C:\Users\gossf\Documents\Games-Kate\duck-of-cards\main.py", line 794, in <module>
@@ -68,6 +66,7 @@ waveNum = 0
 		#anTraceback (most recent call last): da\src  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 84, in exitfunc
 		#\glstuff\glGraphicsStateGuardian_src.cxx
 		#:display:gsg:glgsg(error): Could not load ground-tile-highlight_0
+	# = BUGFIX: arrows fly while paused / various animation cancels
 	# - procedurally generate paths- have enemies follow path?
 	# - terminal-style output/dialogue at the bottom left
 	# - improve card menu and add more options
@@ -210,7 +209,7 @@ class PlayerCastle():
 		self.map = render.attachNewNode("castleMap")
 		self.model.reparentTo(self.map)
 		self.model.setScale(0.2)
-		self.model.setPos(0.5,0.5,1.5)
+		self.model.setPos(0.,0.,1.5)
 		self.model.setColor(0.3,0.35,0.6,1.)
 		self.model.setTag("castle", '1')
 		self.model.node().setIntoCollideMask(BitMask32(0x04))
@@ -270,7 +269,7 @@ class Tower():
 		self.rateOfFire = 1.0
 		self.damage = 1.0
 		self.cooldown = 3.0
-		self.onCD = False
+		self.onCD = True
 
 		# initialise detection of enemies in range
 		self.rangeSphere = CollisionSphere(0, 0, 0, 4)
@@ -288,6 +287,7 @@ class Tower():
 		self.cdInt = Wait(self.cooldown/self.rateOfFire)
 		self.cdSeq = Sequence(self.cdInt,Func(self.cdOFF))
 		self.scanSeq = Sequence(Func(self.update))
+		self.cdSeq.start()
 		self.scanSeq.loop()
 
 		#base.taskMgr.add(self.update, str(self.node)+"_update", taskChain='default')
@@ -342,10 +342,10 @@ class GamestateFSM(FSM):
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
 
 		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.5,9.5,0.5),  # Y position (top left)
-						2: Vec3(9.5,0.5,0.5),  # X position (top right)
-						3: Vec3(0.5,-9.5,0.5), # Yneg position (bottom right)
-						4: Vec3(-9.5,0.5,0.5)} # Xneg position (bottomg left)
+		self.spawner = {1: Vec3(0.,9.5,0.5),  # Y position (top left)
+						2: Vec3(9.5,0.,0.5),  # X position (top right)
+						3: Vec3(0.,-9.5,0.5), # Yneg position (bottom right)
+						4: Vec3(-9.5,0.,0.5)} # Xneg position (bottomg left)
 
 		# empty object to be filled with ui
 		self.ui = None
@@ -502,6 +502,7 @@ class DuckOfCards(ShowBase):
 		# orthographic lens to commit to isometric/dimetric view
 		self.lens = OrthographicLens()
 		self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
+		#self.lens.setFilmSize(WindowProperties.get_size())
 		self.lens.setNearFar(-40,40)
 		self.cam.node().setLens(self.lens)
 
@@ -517,16 +518,16 @@ class DuckOfCards(ShowBase):
 		#self.tileTS = TextureStage('grountTile-texturestage')
 		#self.tileTS.setMode(TextureStage.MReplace)
 		self.groundTex = loader.loadCubeMap("assets/ground-tile_#.png")
-		self.groundTex.set_format(Texture.F_rgba32)
+		#self.groundTex.set_format(Texture.F_rgb32)
 		#self.groundTex.setWrapU(Texture.WM_clamp)
 		#self.groundTex.setWrapV(Texture.WM_clamp)
 		self.createMap(20,20)
-		#self.tileHighlight = loader.loadCubeMap("assets/ground-tile-highlight_#.png")
-		#self.tileHighlight.set_format(Texture.F_rgba32)
+		self.tileHighlight = loader.loadCubeMap("assets/ground-tile-highlight_#.png")
+		#self.tileHighlight.set_format(Texture.F_rgb32)
 
 		# generate path textures and apply to tiles
 		self.pathTex = loader.loadTexture("assets/road1.png")
-		self.pathTex.set_format(Texture.F_rgba32)
+		self.pathTex.set_format(Texture.F_rgba16)
 		self.pathTS = TextureStage('path-texturestage')
 		self.pathTS.setMode(TextureStage.MDecal)
 		self.placePaths()
@@ -672,8 +673,8 @@ class DuckOfCards(ShowBase):
 
 		if self.hitTile != 0:
 			#clear hightlighting
-			self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
-			#self.tileMap.getChild(self.hitTile).setTexture(self.groundTex, 1)
+			#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
+			self.tileMap.getChild(self.hitTile).setTexture(self.groundTex, 1)
 			self.hitTile = 0
 
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
@@ -693,8 +694,8 @@ class DuckOfCards(ShowBase):
 					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
 					#print("mouseover: " + str(self.tileMap.getChild(tileInd)))
 					# highlight on mouseover
-					#self.tileMap.getChild(tileInd).setTexture(TextureStage.getDefault(), self.tileHighlight, 1)
-					self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
+					self.tileMap.getChild(tileInd).replaceTexture(self.groundTex, self.tileHighlight)
+					#self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
 					# save index of hit tile
 					self.hitTile = tileInd
 					#print(tileInd)
@@ -716,10 +717,10 @@ class DuckOfCards(ShowBase):
 				# The actual pond generation will happen in a vertex shader, but it will
 				# 	need a texture tag or application to specific objects to work.
 				if (x==lakeSpawnPoint[0] and y==lakeSpawnPoint[1]):
-					tile = self.lakeTiles.attachNewNode("laketile-" + str(counter))
+					tile = self.lakeTiles.attachNewNode("origin-laketile")
 					tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
 					self.lakeTileModel.instanceTo(tile)
-					tile.setTag("tile-lake-" + str(counter),str(counter))					
+					tile.setTag("tile-lake-",'0')					
 					# elseif (place terrain at x,y)
 					# 	self.terrainTileModel.instanceTo(tile)
 					# 	tile.setTag("tile-terrain-" + str(counter),str(counter))
@@ -727,7 +728,7 @@ class DuckOfCards(ShowBase):
 				else: 						# place a regular grass tile
 					tile = self.tileMap.attachNewNode("tile-" + str(counter))
 					tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
-					tileHitbox = CollisionBox(tile.getPos()/100,.45, .45, .5)
+					tileHitbox = CollisionBox(tile.getPos()/100,.46, .46, .5)
 					tileColl = CollisionNode(str(tile)+'-cnode')
 					tileColl.setIntoCollideMask(BitMask32(0x01))
 					tileNp = tile.attachNewNode(tileColl)
@@ -735,7 +736,7 @@ class DuckOfCards(ShowBase):
 					self.tileModel.instanceTo(tile)
 					tile.setTag("tile-" + str(counter), str(counter))
 					#tileNp.show() 					# uncomment to show hitboxes
-				counter += 1
+					counter += 1
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
 	def placePaths(self):
