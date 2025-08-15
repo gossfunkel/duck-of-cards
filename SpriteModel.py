@@ -139,10 +139,10 @@ class Enemy(SpriteMod):
 
 		# clean up the node
 		print(str(self.node) + " despawning")
-		self.node.removeNode() 
+		self.despawnDie()
 
 	def despawnDie(self):
-		# stop moving and don't damage the castle!
+		# stop moving and don't blink
 		self.moveSeq.clearIntervals()
 		self.dmgSeq.clearIntervals()
 		# remove update task from taskMgr

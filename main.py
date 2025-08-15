@@ -56,7 +56,7 @@ waveNum = 0
 
 # TODO:
 	# = BUGFIX: texture problems with paths and highlight not rendering correctly
-	# = BUGFIX: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath)
+	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
 	# = BUGFIX: when trying to enable hoverover textures for tile picker, we hit this terminal error:
 		# Assertion failed: image_ptr >= orig_image_ptr && image_ptr + view_si  File "C:\Users\gossf\Documents\Games-Kate\duck-of-cards\main.py", line 794, in <module>
 		#ze <= or  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 3331, in run: self.taskMgr.run()
@@ -220,7 +220,7 @@ class PlayerCastle():
 		castleHP -= 5.0
 		# flash red for a moment
 		Sequence(Func(self.model.setColor,1.2,0.1,0.1,1.),
-				Wait(0.05),
+				Wait(0.1),
 				Func(self.model.setColor,0.3,0.35,0.6,1.)).start()
 
 class Arrow():
@@ -573,11 +573,12 @@ class DuckOfCards(ShowBase):
 		self.enemyCount = 0
 		self.enemies = []
 		self.spawnSeq = None
-		self.enemyModel = self.loader.loadModel("assets/enemy1.gltf")
+		self.enemyModel = self.loader.loadModel("assets/dogboard1.gltf")
+		self.enemyModel.setH(90)
 		self.enemyModelNd = self.render.attachNewNode("enemy-models")
 		#self.enemyModel.reparentTo(render)
 		self.enemyModel.setScale(0.1)
-		self.enemyModel.setPos(0.,0.,1.)
+		self.enemyModel.setPos(0.,0.,1.5)
 		#print(self.enemyModel.findAllMaterials())
 
 		# load a random duck as a placeholder for civilian ducks
