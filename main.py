@@ -21,7 +21,7 @@ show-frame-rate-meter 1
 hardware-animated-vertices true
 basic-shaders-only false
 threading-model Cull/Draw
-texture-scale 0.25
+texture-scale 0.5
 """
 
 loadPrcFileData("", config_vars)
@@ -211,7 +211,7 @@ class PlayerCastle():
 		self.map = render.attachNewNode("castleMap")
 		self.model.reparentTo(self.map)
 		self.model.setScale(0.2)
-		self.model.setPos(0.,0.,1.5)
+		self.model.setPos(0.,0.,0.65)
 		self.model.setColor(0.3,0.35,0.6,1.)
 		self.model.setTag("castle", '1')
 		self.model.node().setIntoCollideMask(BitMask32(0x04))
@@ -226,13 +226,17 @@ class PlayerCastle():
 				Func(self.model.setColor,0.3,0.35,0.6,1.)).start()
 
 class Arrow():
-	def __init__(self, arrowNd, pos, enemyId):
-		self.node = arrowNd
+	def __init__(self, pos, enemyId):
+		self.node = base.arrowModelNd.attachNewNode("arrow")
+		base.arrowModel.instanceTo(self.node)
+		self.node.setScale(0.6)
 		self.enemy = base.enemies[int(enemyId)]
 		self.damage = 10.0
-		self.node.setPos(pos)
-		self.node.lookAt(self.enemy.node.getPos())
 		self.node.setP(30)
+		self.node.setY(-45) 
+		# modified origin for realism. 
+		self.node.setPos(pos + Vec3(-.1, 0., .7))
+		self.node.lookAt(self.getTargetPos())
 		#projectileNp = render.attachNewNode(ActorNode('projectile'))
 		# self.cnode = CollisionNode('arrowColNode')
 		# self.cnode.setFromCollideMask(BitMask32(0x00))
@@ -253,9 +257,9 @@ class Arrow():
 		# get up-to-date position
 		p = self.enemy.node.getPos()
 		# adjust for visual accuracy
-		p[0] += .55
-		p[1] -= .3
-		p[2] += 1.3
+		#p[0] += .55
+		#p[1] -= .3
+		p[2] += .75
 		return p
 
 	def despawn(self):
@@ -270,11 +274,12 @@ class Tower():
 		#self.node.setScale()
 		self.rateOfFire = 1.0
 		self.damage = 1.0
+		self.range = 5.0
 		self.cooldown = 3.0
 		self.onCD = True
 
 		# initialise detection of enemies in range
-		self.rangeSphere = CollisionSphere(0, 0, 0, 4)
+		self.rangeSphere = CollisionSphere(0, 0, 0, self.range)
 		rcnode = CollisionNode(str(self.node) + '-range-cnode')
 		rcnode.setFromCollideMask(BitMask32(0x02))
 		self.rangeColliderNp = self.node.attachNewNode(rcnode)
@@ -335,19 +340,17 @@ class Tower():
 
 	def launchProjectiles(self, enemy):
 		print("firing at " + enemy)
-		arrowNd = base.arrowModelNd.attachNewNode("arrow")
-		newArrow = Arrow(arrowNd, self.node.getPos(), enemy)
-		base.arrowModel.instanceTo(arrowNd)
+		newArrow = Arrow(self.node.getPos(), enemy)
 
 class GamestateFSM(FSM):
 	def __init__(self): 
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
 
 		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.,9.5,0.5),  # Y position (top left)
-						2: Vec3(9.5,0.,0.5),  # X position (top right)
-						3: Vec3(0.,-9.5,0.5), # Yneg position (bottom right)
-						4: Vec3(-9.5,0.,0.5)} # Xneg position (bottomg left)
+		self.spawner = {1: Vec3(0.,18.,0.),  # Y position (top left)
+						2: Vec3(18.,0.,0.),  # X position (top right)
+						3: Vec3(0.,-18.,0.), # Yneg position (bottom right)
+						4: Vec3(-18.,0.,0.)} # Xneg position (bottomg left)
 
 		# empty object to be filled with ui
 		self.ui = None
@@ -529,8 +532,8 @@ class DuckOfCards(ShowBase):
 		#print(self.tileModel.getTexScale3d(self.tileTS))
 		#self.tileModel.clearTexture()
 		#self.tileModel.setTexture(self.tileTS, self.groundTex, 1)
-		self.tileModel.setScale(0.5)
-		self.lakeTileModel.setScale(0.5)
+		#self.tileModel.setScale(0.5)
+		#self.lakeTileModel.setScale(0.5)
 		#self.tileTS = TextureStage('grountTile-texturestage')
 		#self.groundTex.setWrapU(Texture.WM_clamp)
 		#self.groundTex.setWrapV(Texture.WM_clamp)
@@ -591,7 +594,7 @@ class DuckOfCards(ShowBase):
 		self.enemyModelNd = self.render.attachNewNode("enemy-models")
 		#self.enemyModel.reparentTo(render)
 		self.enemyModel.setScale(0.1)
-		self.enemyModel.setPos(0.,0.,1.5)
+		self.enemyModel.setPos(0.,0.,.8)
 		#print(self.enemyModel.findAllMaterials())
 
 		# load a random duck as a placeholder for civilian ducks
@@ -637,7 +640,7 @@ class DuckOfCards(ShowBase):
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower'): # in tower tile picker state; place tower and exit tile picker state
-			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0.,0,0.6))
+			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0.,0,1.))
 			self.fsm.demand('Gameplay')
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
@@ -688,8 +691,8 @@ class DuckOfCards(ShowBase):
 		if self.hitTile != 0:
 			#clear hightlighting
 			#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
-			#self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
-			self.tileMap.getChild(self.hitTile).set_texture(self.tileTS, self.groundTex, 1)
+			self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
+			#self.tileMap.getChild(self.hitTile).set_texture(self.tileTS, self.groundTex, 1)
 			#self.tileMap.getChild(self.hitTile).find_all_materials()[0].setDiffuse((1,1,1,1))
 			#self.groundMaterial.setDiffuse((1.,1.,1.,1.))
 			self.hitTile = 0
@@ -711,8 +714,8 @@ class DuckOfCards(ShowBase):
 					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
 					#print("mouseover: " + str(self.tileMap.getChild(tileInd)))
 					# highlight on mouseover
-					#self.tileMap.getChild(tileInd).replaceTexture(self.groundTex, self.tileHighlight)
-					self.tileMap.getChild(tileInd).set_texture(self.tileTS, self.tileHighlight, 1)
+					self.tileMap.getChild(tileInd).replaceTexture(self.groundTex, self.tileHighlight)
+					#self.tileMap.getChild(tileInd).set_texture(self.tileTS, self.tileHighlight, 1)
 					#self.tileMap.getChild(tileInd).find_all_materials()[0].setDiffuse((1.2,1.2,1.2,1))
 					#self.groundMaterial.setDiffuse((1.2,1.2,1.2,1.))
 					#self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
@@ -737,7 +740,8 @@ class DuckOfCards(ShowBase):
 				# 	need a texture tag or application to specific objects to work.
 				if (x==lakeSpawnPoint[0] and y==lakeSpawnPoint[1]):
 					tile = self.lakeTiles.attachNewNode("origin-laketile")
-					tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
+					#tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
+					tile.setPos(width - (2*width-x*2),length - (2*length-y*2),-0.5)
 					self.lakeTileModel.instanceTo(tile)
 					tile.setTag("tile-lake-",'0')					
 					# elseif (place terrain at x,y)
@@ -746,8 +750,10 @@ class DuckOfCards(ShowBase):
 					# 	createTerrainCollider(tile)
 				else: 						# place a regular grass tile
 					tile = self.tileMap.attachNewNode("tile-" + str(counter))
-					tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
-					tileHitbox = CollisionBox(tile.getPos()/100,.46, .46, .5)
+					#tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
+					tile.setPos(width - (2*width-x*2),length - (2*length-y*2),-0.5)
+					#tileHitbox = CollisionBox(tile.getPos()/100,.46, .46, .5)
+					tileHitbox = CollisionBox(tile.getPos()/50,.92, .92, .5)
 					tileColl = CollisionNode(str(tile)+'-cnode')
 					tileColl.setIntoCollideMask(BitMask32(0x01))
 					tileNp = tile.attachNewNode(tileColl)

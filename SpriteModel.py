@@ -76,8 +76,8 @@ class Enemy(SpriteMod):
 		self.node.setPos(pos)
 		self.node.setColor(1.,0.5,0.5,1.)
 		#self.node.setH(-30)
-		# modified target vector to prevent enemies flying into the air as they approach castle
-		self.targetPos = base.castle.model.getPos() - Vec3(0.,0.,1.)
+		# modified target vector to prevent enemies flying into air or sinking into ground as they approach castle
+		self.targetPos = base.castle.model.getPos() - Vec3(0.,0.,.5)
 
 		base.enemyModel.instanceTo(self.node)
 		
@@ -100,18 +100,15 @@ class Enemy(SpriteMod):
 				#print(str(self.node)+" facing Yneg")
 
 		self.hp = 20.0
-		
-		#self.speed = speed # allows slowing and rushing effects
-
-						# CollisionCapsule(ax, ay, az, bx, by, bz, radius)
-		self.hitSphere = CollisionCapsule(0.09, -0.1, 1.2,0.09, -0.1, 1.45, .12)
+						#CollisionCapsule(ax, ay, az, bx, by, bz, radius)
+		self.hitSphere = CollisionCapsule(0., -0.25, 0.75, 0., 0.2, 0.75, .125)
 		hcnode = CollisionNode('{}-cnode'.format(str(self.node)))
 		hcnode.setIntoCollideMask(BitMask32(0x02))
 		self.hitNp = self.node.attachNewNode(hcnode)
 		self.hitNp.node().addSolid(self.hitSphere)
 		#self.hitNp.show() 								# uncomment to show hitbox
 
-		self.move = self.node.posInterval(20./self.speed, self.targetPos, self.node.getPos())
+		self.move = self.node.posInterval(30./self.speed, self.targetPos, self.node.getPos())
 		self.moveSeq = Sequence(
 			self.move,
 			Func(self.despawnAtk)
