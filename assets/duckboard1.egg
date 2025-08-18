@@ -1,0 +1,76 @@
+<CoordinateSystem> { Z-up } 
+<Material> duckrear {
+  <Scalar> baser { 0.800000 }
+  <Scalar> baseg { 0.800000 }
+  <Scalar> baseb { 0.800000 }
+  <Scalar> basea { 1.000000 }
+  <Scalar> roughness { 0.750000 }
+  <Scalar> metallic { 0.100000 }
+  <Scalar> local { 0.000000 }
+  <Scalar> diffr { 1.0 }
+  <Scalar> diffg { 1.0 }
+  <Scalar> diffb { 1.0 }
+}
+
+<Texture> duck1-back.png {
+  "./tex/duck1-back.png"
+  <Scalar> envtype { MODULATE }
+  <Scalar> uv-name { UVMap }
+  <Scalar> minfilter { LINEAR_MIPMAP_LINEAR }
+  <Scalar> magfilter { LINEAR_MIPMAP_LINEAR }
+  <Scalar> wrap { CLAMP }
+}
+
+  <Group> Empty.001 {
+    <Transform> {
+      <Matrix4> {
+        1.0 0.0 0.0 0.0 
+        0.0 7.549790126404332e-08 1.0 0.0 
+        0.0 -1.0 7.549790126404332e-08 0.0 
+        0.0 0.11999998241662979 0.0 1.0 
+      }
+    }
+    
+    <VertexPool> Empty.001 {
+    
+      <Vertex> 0 {-4.012907 0.120000 -4.012907
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <UV> UVMap {
+          0.000000 0.000000 
+        }
+      }
+      <Vertex> 1 {4.012907 0.120000 -4.012907
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <UV> UVMap {
+          1.000000 0.000000 
+        }
+      }
+      <Vertex> 2 {4.012907 0.120000 4.012907
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <UV> UVMap {
+          1.000000 1.000000 
+        }
+      }
+      <Vertex> 3 {-4.012907 0.120000 4.012907
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <RGBA> { 1 1 1 1 }
+        <UV> UVMap {
+          0.000000 1.000000 
+        }
+      }}
+    
+    
+    <Polygon> {
+      <TRef> { duck1-back.png }
+      <MRef> { duckrear }
+      <Normal> {0.000000 -1.000000 0.000000}
+      <VertexRef> { 0 1 2 3 <Ref> { Empty.001 }} 
+    }
+  }

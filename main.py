@@ -3,7 +3,7 @@ from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32,
 from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Material
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
 from panda3d.core import CollisionSphere, CollisionCapsule, Point3, TextureStage, TexGenAttrib
-from panda3d.core import CollisionBox, TransparencyAttrib, CardMaker, Texture
+from panda3d.core import CollisionBox, TransparencyAttrib, CardMaker, Texture, SamplerState
 from direct.gui.OnscreenImage import OnscreenImage
 from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
@@ -21,6 +21,7 @@ show-frame-rate-meter 1
 hardware-animated-vertices true
 basic-shaders-only false
 threading-model Cull/Draw
+texture-scale 0.25
 """
 
 loadPrcFileData("", config_vars)
@@ -66,7 +67,8 @@ waveNum = 0
 		#anTraceback (most recent call last): da\src  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 84, in exitfunc
 		#\glstuff\glGraphicsStateGuardian_src.cxx
 		#:display:gsg:glgsg(error): Could not load ground-tile-highlight_0
-	# = BUGFIX: arrows fly while paused / various animation cancels
+	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck)
+	# = dogs need flipped the right way when going y+
 	# - procedurally generate paths- have enemies follow path?
 	# - terminal-style output/dialogue at the bottom left
 	# - improve card menu and add more options
@@ -204,8 +206,8 @@ class UI():
 	# 	cdNP.setPos(pos)
 
 class PlayerCastle():
-	def __init__(self, sb):
-		self.model = sb.loader.loadModel("playerBase.gltf")
+	def __init__(self):
+		self.model = base.loader.loadModel("playerBase.gltf")
 		self.map = render.attachNewNode("castleMap")
 		self.model.reparentTo(self.map)
 		self.model.setScale(0.2)
@@ -507,28 +509,39 @@ class DuckOfCards(ShowBase):
 		self.cam.node().setLens(self.lens)
 
 		# generate ground tile model and instance, creating node map
-		#self.tileStage = TextureStage('tileStage')
 		self.tileMap = self.render.attachNewNode("tileMap")
 		self.lakeTiles = self.render.attachNewNode("lakeTiles")
 		self.tileModel = self.loader.loadModel("assets/groundTile.gltf")
+		#self.groundMaterial = self.tileModel.find_all_materials()[0]
+		#print(self.groundMaterial.getDiffuse())
+		#self.tileTS = self.tileModel.findAllTextureStages()
+		#print(self.tileTS)
+		self.tileTS = self.tileModel.find_texture_stage('ground-tile.png')
+		#self.tileModel.setTexGen(self.tileTS, TexGenAttrib.MWorldCubeMap)
+		#self.tileTS.setMode(TextureStage.MReplace)
+		self.groundTex = self.loader.loadCubeMap("assets/ground-tile_#.png")
+		#self.groundTex.setMagfilter(SamplerState.FT_linear_mipmap_linear)
+		#self.groundTex.setMinfilter(SamplerState.FT_linear_mipmap_linear)
 		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.gltf")
+		self.tileHighlight = self.loader.loadCubeMap("assets/ground-tile-highlight_#.png")
+		#self.groundTex.set_format(Texture.F_rgb32)
+		#self.tileHighlight.set_format(Texture.F_rgb32)
+		#print(self.tileModel.getTexScale3d(self.tileTS))
 		#self.tileModel.clearTexture()
+		#self.tileModel.setTexture(self.tileTS, self.groundTex, 1)
 		self.tileModel.setScale(0.5)
 		self.lakeTileModel.setScale(0.5)
 		#self.tileTS = TextureStage('grountTile-texturestage')
-		#self.tileTS.setMode(TextureStage.MReplace)
-		self.groundTex = loader.loadCubeMap("assets/ground-tile_#.png")
-		#self.groundTex.set_format(Texture.F_rgb32)
 		#self.groundTex.setWrapU(Texture.WM_clamp)
 		#self.groundTex.setWrapV(Texture.WM_clamp)
 		self.createMap(20,20)
-		self.tileHighlight = loader.loadCubeMap("assets/ground-tile-highlight_#.png")
-		#self.tileHighlight.set_format(Texture.F_rgb32)
+
+		#self.tileModel.ls()
 
 		# generate path textures and apply to tiles
 		self.pathTex = loader.loadTexture("assets/road1.png")
-		self.pathTex.set_format(Texture.F_rgba16)
-		self.pathTS = TextureStage('path-texturestage')
+		self.pathTex.set_format(Texture.F_rgba32)
+		self.pathTS = TextureStage('path-textureStage')
 		self.pathTS.setMode(TextureStage.MDecal)
 		self.placePaths()
 
@@ -547,7 +560,7 @@ class DuckOfCards(ShowBase):
 		#tpNp.show()
 
 		# create a player castle object
-		self.castle = PlayerCastle(self)
+		self.castle = PlayerCastle()
 		# self.cPickerRay = CollisionRay()
 		# self.castlePicker = CollisionTraverser()
 		# self.castleQueue = CollisionHandlerQueue()
@@ -675,7 +688,10 @@ class DuckOfCards(ShowBase):
 		if self.hitTile != 0:
 			#clear hightlighting
 			#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
-			self.tileMap.getChild(self.hitTile).setTexture(self.groundTex, 1)
+			#self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
+			self.tileMap.getChild(self.hitTile).set_texture(self.tileTS, self.groundTex, 1)
+			#self.tileMap.getChild(self.hitTile).find_all_materials()[0].setDiffuse((1,1,1,1))
+			#self.groundMaterial.setDiffuse((1.,1.,1.,1.))
 			self.hitTile = 0
 
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
@@ -695,12 +711,14 @@ class DuckOfCards(ShowBase):
 					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
 					#print("mouseover: " + str(self.tileMap.getChild(tileInd)))
 					# highlight on mouseover
-					self.tileMap.getChild(tileInd).replaceTexture(self.groundTex, self.tileHighlight)
+					#self.tileMap.getChild(tileInd).replaceTexture(self.groundTex, self.tileHighlight)
+					self.tileMap.getChild(tileInd).set_texture(self.tileTS, self.tileHighlight, 1)
+					#self.tileMap.getChild(tileInd).find_all_materials()[0].setDiffuse((1.2,1.2,1.2,1))
+					#self.groundMaterial.setDiffuse((1.2,1.2,1.2,1.))
 					#self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
 					# save index of hit tile
 					self.hitTile = tileInd
 					#print(tileInd)
-					# TODO : FIX BUG : CURRENTLY RETURNING [-9,-9,0] REGARDLESS OF CLICK
 
 		return task.cont
 
