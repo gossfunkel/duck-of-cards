@@ -1,5 +1,5 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import NodePath, BitMask32, Vec3, CollisionCapsule, CollisionNode
+from panda3d.core import NodePath, BitMask32, Vec3, CollisionCapsule, CollisionNode, TransformState, LMatrix4
 from direct.interval.IntervalGlobal import *
 from direct.fsm.FSM import FSM
 
@@ -10,9 +10,11 @@ class SpriteMod(FSM):
 		self.pos = pos
 		self.speed = speed
 
+		#self.mirrorMat = TransformState.makeMat(LMatrix4(1,-1,1))
+
 	def enterX(self):
 		# TODO lerp round
-		print(self.node.getX()+5, self.node.getY(), self.node.getZ())
+		#print(self.node.getX()+5, self.node.getY(), self.node.getZ())
 		self.node.lookAt(self.node.getX()+5, self.node.getY(), self.node.getZ())
 
 	def filterX(self, request, args): # process input while facing +x
@@ -28,6 +30,7 @@ class SpriteMod(FSM):
 	def enterY(self):
 		# TODO lerp round
 		self.node.lookAt(self.node.getX(), self.node.getY()+5,self.node.getZ())
+		#self.node.setTexRotate(self.node.findAllTextureStages()[0], 180)
 
 	def filterY(self, request, args): # process input while facing +x
 		if (request == 'Left'):

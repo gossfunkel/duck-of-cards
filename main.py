@@ -21,8 +21,9 @@ show-frame-rate-meter 1
 hardware-animated-vertices true
 basic-shaders-only false
 threading-model Cull/Draw
-texture-scale 0.5
 """
+#texture-scale 0.5
+#"""
 
 loadPrcFileData("", config_vars)
 
@@ -76,6 +77,7 @@ waveNum = 0
 	# - add more enemies and bigger waves
 	# - set up initial card offer
 	# - add more card options
+	# - confine mouse to window edges and trigger camera movement when it hits an edge
 	# - give towers more prioritising options (furthest forward, closest, highest hp etc)
 	# - update enemy, tower, and castle models
 	# - add more terrain/some random plant sprites
@@ -470,8 +472,8 @@ class DuckOfCards(ShowBase):
 
 		# initialise pbr for models, and shaders
 		#spbr.__init__("Duck of Cards")
-		cpbr.apply_shader(self.render)
-		cpbr.screenspace_init()
+		#cpbr.apply_shader(self.render)
+		#cpbr.screenspace_init()
 		render.setShaderAuto()
         # example of how to turn on Global Illumination (GI)
 		#self.render.set_shader_input('shadow_boost', 0.3)
@@ -482,9 +484,9 @@ class DuckOfCards(ShowBase):
 		#screen_quad.set_shader_input("bloom_blur_width", 20)
 		#screen_quad.set_shader_input("bloom_samples", 4)
 
-		# generate UI
+		# Make dark background 
 		#self.set_background_color(0.42,0.65,1.,1.)
-		self.set_background_color(0.,0.,0.,1.)
+		self.set_background_color(0.02,0.,0.05,1.)
 
 		# create sunlight
 		self.dirLight = DirectionalLight('dirLight')
@@ -519,24 +521,29 @@ class DuckOfCards(ShowBase):
 		#print(self.groundMaterial.getDiffuse())
 		#self.tileTS = self.tileModel.findAllTextureStages()
 		#print(self.tileTS)
-		self.tileTS = self.tileModel.find_texture_stage('ground-tile.png')
+		#self.tileTS = self.tileModel.find_texture_stage('Base Color')
 		#self.tileModel.setTexGen(self.tileTS, TexGenAttrib.MWorldCubeMap)
 		#self.tileTS.setMode(TextureStage.MReplace)
-		self.groundTex = self.loader.loadCubeMap("assets/ground-tile_#.png")
+		#self.groundTex = self.loader.loadCubeMap("assets/ground-tile_#.png")
 		#self.groundTex.setMagfilter(SamplerState.FT_linear_mipmap_linear)
 		#self.groundTex.setMinfilter(SamplerState.FT_linear_mipmap_linear)
 		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.gltf")
-		self.tileHighlight = self.loader.loadCubeMap("assets/ground-tile-highlight_#.png")
+		self.tileHighlight = self.loader.loadTexture("assets/white.png")
+		self.tileHighlightTS = TextureStage('tile-highlight')
+		self.tileHighlightTS.setMode(TextureStage.M_add)
+		self.tileHighlight.set_format(Texture.F_rgb32)
+		self.tileHighlight.setWrapU(Texture.WM_repeat)
+		self.tileHighlight.setWrapV(Texture.WM_repeat)
+		#self.tileHighlight = self.loader.loadCubeMap("assets/ground-tile-highlight_#.png")
+		#self.tileHighlight.setMagfilter(SamplerState.FT_linear_mipmap_linear)
+		#self.tileHighlight.setMinfilter(SamplerState.FT_linear_mipmap_linear)
 		#self.groundTex.set_format(Texture.F_rgb32)
-		#self.tileHighlight.set_format(Texture.F_rgb32)
 		#print(self.tileModel.getTexScale3d(self.tileTS))
 		#self.tileModel.clearTexture()
 		#self.tileModel.setTexture(self.tileTS, self.groundTex, 1)
 		#self.tileModel.setScale(0.5)
 		#self.lakeTileModel.setScale(0.5)
 		#self.tileTS = TextureStage('grountTile-texturestage')
-		#self.groundTex.setWrapU(Texture.WM_clamp)
-		#self.groundTex.setWrapV(Texture.WM_clamp)
 		self.createMap(20,20)
 
 		#self.tileModel.ls()
@@ -691,8 +698,10 @@ class DuckOfCards(ShowBase):
 		if self.hitTile != 0:
 			#clear hightlighting
 			#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
-			self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
-			#self.tileMap.getChild(self.hitTile).set_texture(self.tileTS, self.groundTex, 1)
+			#self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
+			litTile = self.tileMap.getChild(self.hitTile)
+			#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.groundTex, 1)
+			litTile.clearTexture(self.tileHighlightTS)
 			#self.tileMap.getChild(self.hitTile).find_all_materials()[0].setDiffuse((1,1,1,1))
 			#self.groundMaterial.setDiffuse((1.,1.,1.,1.))
 			self.hitTile = 0
@@ -714,8 +723,11 @@ class DuckOfCards(ShowBase):
 					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
 					#print("mouseover: " + str(self.tileMap.getChild(tileInd)))
 					# highlight on mouseover
-					self.tileMap.getChild(tileInd).replaceTexture(self.groundTex, self.tileHighlight)
-					#self.tileMap.getChild(tileInd).set_texture(self.tileTS, self.tileHighlight, 1)
+					print(self.tileMap.getChild(tileInd).findAllTextureStages())
+					litTile = self.tileMap.getChild(self.hitTile)
+					#litTile.replaceTexture(self.groundTex, self.tileHighlight)
+					#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.tileHighlight, 1)
+					litTile.setTexture(self.tileHighlightTS, self.tileHighlight)
 					#self.tileMap.getChild(tileInd).find_all_materials()[0].setDiffuse((1.2,1.2,1.2,1))
 					#self.groundMaterial.setDiffuse((1.2,1.2,1.2,1.))
 					#self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
