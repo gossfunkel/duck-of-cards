@@ -1,4 +1,4 @@
-#version 300
+#version 450
 
 uniform mat4 p3d_ModelViewProjectionMatrix;
 

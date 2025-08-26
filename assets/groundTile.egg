@@ -14,6 +14,7 @@
 
 <Texture> ground-tile.png {
   "./tex/ground-tile.png"
+  <Scalar> format { RGBA }
   <Scalar> envtype { MODULATE }
   <Scalar> uv-name { UVMap }
   <Scalar> minfilter { LINEAR_MIPMAP_LINEAR }

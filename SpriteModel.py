@@ -169,7 +169,7 @@ class Enemy(SpriteMod):
 class NormalInnocentDuck(SpriteMod): 
 	def __init__(self, name, pos, speed):
 		super().__init__(str(name), pos, speed)
-		print("spawning a normal duck")
+		#print("spawning a normal duck")
 		self.node = base.duckNp.attachNewNode(name)
 		self.node.setPos(pos)
 		self.demand('Xneg')
@@ -190,7 +190,7 @@ class NormalInnocentDuck(SpriteMod):
 		
 		# rotate the random duck
 		if ((self.t % 90) == 1):
-			print("duck turning")
+			#print("duck turning")
 			self.demand('Right')
 			#self.turnRight()
 

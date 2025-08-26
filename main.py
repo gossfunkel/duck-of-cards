@@ -1,6 +1,6 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import WindowProperties, NodePath, loadPrcFileData, BitMask32, Vec3
-from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Material
+from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Material, Shader
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
 from panda3d.core import CollisionSphere, CollisionCapsule, Point3, TextureStage, TexGenAttrib
 from panda3d.core import CollisionBox, TransparencyAttrib, CardMaker, Texture, SamplerState
@@ -331,14 +331,16 @@ class DuckOfCards(ShowBase):
 		cpbr.apply_shader(self.render)
 		cpbr.screenspace_init()
 		render.setShaderAuto()
-        # example of how to turn on Global Illumination (GI)
-		#self.render.set_shader_input('shadow_boost', 0.3)
+		#cpbr.set_cubebuff_active()
+		cpbr.set_cubebuff_inactive()
+		base.complexpbr_z_tracking = True
+
 		# example of how to set up bloom -- complexpbr.screenspace_init() must have been called first
-		#screen_quad = base.screen_quad
-        #screen_quad.set_shader_input("bloom_intensity", 0.25)
-		#screen_quad.set_shader_input("bloom_threshold", 0.3)
-		#screen_quad.set_shader_input("bloom_blur_width", 20)
-		#screen_quad.set_shader_input("bloom_samples", 4)
+		screen_quad = base.screen_quad
+		screen_quad.set_shader_input("bloom_intensity", 0.25)
+		screen_quad.set_shader_input("bloom_threshold", 0.3)
+		screen_quad.set_shader_input("bloom_blur_width", 20)
+		screen_quad.set_shader_input("bloom_samples", 4)
 
 		# Make dark background 
 		#self.set_background_color(0.42,0.65,1.,1.)
@@ -372,7 +374,9 @@ class DuckOfCards(ShowBase):
 		# generate ground tile model and instance, creating node map
 		self.tileMap = self.render.attachNewNode("tileMap")
 		self.lakeTiles = self.render.attachNewNode("lakeTiles")
-		self.tileModel = self.loader.loadModel("assets/groundTile.gltf")
+		self.tileModel = self.loader.loadModel("assets/groundTile.egg")
+		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.gltf")
+		#cpbr.skin(self.tileModel)
 		#self.groundMaterial = self.tileModel.find_all_materials()[0]
 		#print(self.groundMaterial.getDiffuse())
 		#self.tileTS = self.tileModel.findAllTextureStages()
@@ -383,10 +387,9 @@ class DuckOfCards(ShowBase):
 		#self.groundTex = self.loader.loadCubeMap("assets/ground-tile_#.png")
 		#self.groundTex.setMagfilter(SamplerState.FT_linear_mipmap_linear)
 		#self.groundTex.setMinfilter(SamplerState.FT_linear_mipmap_linear)
-		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.gltf")
-		self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
-		self.tileHighlightTS = TextureStage('tile-highlight')
-		self.tileHighlightTS.setMode(TextureStage.M_emission)
+		#self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
+		#self.tileHighlightTS = TextureStage('tile-highlight')
+		#self.tileHighlightTS.setMode(TextureStage.M_emission)
 		#self.tileHighlight.set_format(Texture.F_rgb8)
 		#self.tileHighlight.setWrapU(Texture.WM_repeat)
 		#self.tileHighlight.setWrapV(Texture.WM_repeat)
@@ -400,6 +403,8 @@ class DuckOfCards(ShowBase):
 		#self.tileModel.setScale(0.5)
 		#self.lakeTileModel.setScale(0.5)
 		#self.tileTS = TextureStage('grountTile-texturestage')
+		#self.highlightShader = Shader.load(Shader.SL_GLSL, vertex="default.vert", 
+		#													fragment="highlight.frag")
 		self.createMap(20,20)
 
 		#self.tileModel.ls()
@@ -504,6 +509,7 @@ class DuckOfCards(ShowBase):
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower'): # in tower tile picker state; place tower and exit tile picker state
 			self.spawnTower(self.hitTile.getPos() + Vec3(0.,0,1.))
+			self.hitTile.set_shader_input("final_brightness", 1.0)
 			self.fsm.demand('Gameplay')
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
@@ -557,7 +563,10 @@ class DuckOfCards(ShowBase):
 				#self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
 				#litTile = self.tileMap.getChild(self.hitTile)
 				#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.groundTex, 1)
-				self.hitTile.clearTexture(self.tileHighlightTS)
+				##self.hitTile.clearTexture(self.tileHighlightTS)
+				for tile in self.tileMap.getChildren():
+					tile.set_shader_input("final_brightness", 1.0)
+				#self.hitTile.removeShader(highlightShader)
 				#self.tileMap.getChild(self.hitTile).find_all_materials()[0].setDiffuse((1,1,1,1))
 				#self.groundMaterial.setDiffuse((1.,1.,1.,1.))
 				self.hitTile = None
@@ -581,7 +590,9 @@ class DuckOfCards(ShowBase):
 					print("highlighting: " + str(litTile))
 					#litTile.replaceTexture(self.groundTex, self.tileHighlight)
 					#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.tileHighlight, 1)
-					litTile.setTexture(self.tileHighlightTS, self.tileHighlight)
+					##litTile.setTexture(self.tileHighlightTS, self.tileHighlight)
+					litTile.set_shader_input("final_brightness", 1.3)
+					#litTile.setShader(self.highlightShader)
 					#self.tileMap.getChild(tileInd).find_all_materials()[0].setDiffuse((1.2,1.2,1.2,1))
 					#self.groundMaterial.setDiffuse((1.2,1.2,1.2,1.))
 					#self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
