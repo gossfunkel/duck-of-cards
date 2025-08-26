@@ -12,7 +12,7 @@ from enum import Enum
 from direct.fsm.FSM import FSM
 from random import randint
 #import simplepbr as spbr 
-import complexpbr as cpbr 
+#import complexpbr as cpbr 
 import SpriteModel as spritem
 import Buildings
 
@@ -328,19 +328,19 @@ class DuckOfCards(ShowBase):
 
 		# initialise pbr for models, and shaders
 		#spbr.__init__("Duck of Cards")
-		cpbr.apply_shader(self.render)
-		cpbr.screenspace_init()
+		#cpbr.apply_shader(self.render)
+		#cpbr.screenspace_init()
 		render.setShaderAuto()
 		#cpbr.set_cubebuff_active()
-		cpbr.set_cubebuff_inactive()
-		base.complexpbr_z_tracking = True
+		#cpbr.set_cubebuff_inactive()
+		#base.complexpbr_z_tracking = True
 
 		# example of how to set up bloom -- complexpbr.screenspace_init() must have been called first
-		screen_quad = base.screen_quad
-		screen_quad.set_shader_input("bloom_intensity", 0.25)
-		screen_quad.set_shader_input("bloom_threshold", 0.3)
-		screen_quad.set_shader_input("bloom_blur_width", 20)
-		screen_quad.set_shader_input("bloom_samples", 4)
+		#screen_quad = base.screen_quad
+		#screen_quad.set_shader_input("bloom_intensity", 0.25)
+		#screen_quad.set_shader_input("bloom_threshold", 0.3)
+		#screen_quad.set_shader_input("bloom_blur_width", 20)
+		#screen_quad.set_shader_input("bloom_samples", 4)
 
 		# Make dark background 
 		#self.set_background_color(0.42,0.65,1.,1.)
@@ -355,63 +355,35 @@ class DuckOfCards(ShowBase):
 		self.dirLightNp.setHpr(-70,-40,20)
 		render.setLight(self.dirLightNp)
 
-		# initialise the dimetric camera (26.565deg for square pixels)
+		# initialise the camera - isometric angle (35.264deg)
 		self.cam.setPos(0.,0.,3.)
-		#self.cam.setHpr(-45,-26.565,0)
-		# isometric angle! 35.264deg
 		self.cam.setHpr(-45,-35.264,0)
-		#self.cam.setR(45) 			 # global 45deg roll
-		#self.cam.setY(-45) 		 # global 45deg yaw
-		#self.cam.setR(self.cam, 45) # local  45deg roll
+		#self.cam.setHpr(-45,-26.565,0) # dimetric angle - 26.565deg for square pixels
 		self.cam.setPos(self.cam, self.cam.getPos() + Vec3(0.,-12.,-4.))
-		# orthographic lens to commit to isometric/dimetric view
+		# orthographic lens to commit to isometric view
 		self.lens = OrthographicLens()
 		self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
-		#self.lens.setFilmSize(WindowProperties.get_size())
 		self.lens.setNearFar(-40,40)
 		self.cam.node().setLens(self.lens)
 
 		# generate ground tile model and instance, creating node map
 		self.tileMap = self.render.attachNewNode("tileMap")
-		self.lakeTiles = self.render.attachNewNode("lakeTiles")
 		self.tileModel = self.loader.loadModel("assets/groundTile.egg")
-		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.gltf")
-		#cpbr.skin(self.tileModel)
-		#self.groundMaterial = self.tileModel.find_all_materials()[0]
-		#print(self.groundMaterial.getDiffuse())
-		#self.tileTS = self.tileModel.findAllTextureStages()
-		#print(self.tileTS)
-		#self.tileTS = self.tileModel.find_texture_stage('Base Color')
-		#self.tileModel.setTexGen(self.tileTS, TexGenAttrib.MWorldCubeMap)
-		#self.tileTS.setMode(TextureStage.MReplace)
-		#self.groundTex = self.loader.loadCubeMap("assets/ground-tile_#.png")
-		#self.groundTex.setMagfilter(SamplerState.FT_linear_mipmap_linear)
-		#self.groundTex.setMinfilter(SamplerState.FT_linear_mipmap_linear)
-		#self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
-		#self.tileHighlightTS = TextureStage('tile-highlight')
-		#self.tileHighlightTS.setMode(TextureStage.M_emission)
-		#self.tileHighlight.set_format(Texture.F_rgb8)
-		#self.tileHighlight.setWrapU(Texture.WM_repeat)
-		#self.tileHighlight.setWrapV(Texture.WM_repeat)
-		#self.tileHighlight = self.loader.loadCubeMap("assets/ground-tile-highlight_#.png")
-		#self.tileHighlight.setMagfilter(SamplerState.FT_linear_mipmap_linear)
-		#self.tileHighlight.setMinfilter(SamplerState.FT_linear_mipmap_linear)
-		#self.groundTex.set_format(Texture.F_rgb32)
-		#print(self.tileModel.getTexScale3d(self.tileTS))
-		#self.tileModel.clearTexture()
-		#self.tileModel.setTexture(self.tileTS, self.groundTex, 1)
-		#self.tileModel.setScale(0.5)
-		#self.lakeTileModel.setScale(0.5)
-		#self.tileTS = TextureStage('grountTile-texturestage')
-		#self.highlightShader = Shader.load(Shader.SL_GLSL, vertex="default.vert", 
-		#													fragment="highlight.frag")
+		self.lakeTiles = self.render.attachNewNode("lakeTiles")
+		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.egg")
+
+		self.tileTS = TextureStage('tileTS')
+		self.tileTS.setMode(TextureStage.M_add)
+		self.tileTS.setTexcoordName('UVMap')
+		self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
+		self.groundTex = self.loader.loadTexture("assets/ground-tile.png")
 		self.createMap(20,20)
 
 		#self.tileModel.ls()
 
 		# generate path textures and apply to tiles
-		self.pathTex = loader.loadTexture("assets/road1.png")
-		self.pathTex.set_format(Texture.F_rgba32)
+		self.pathTex = loader.loadTexture("assets/road-tile.png")
+		#self.pathTex.set_format(Texture.F_rgba32)
 		self.pathTS = TextureStage('path-textureStage')
 		self.pathTS.setMode(TextureStage.MDecal)
 		self.placePaths()
@@ -507,9 +479,9 @@ class DuckOfCards(ShowBase):
 
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
-		if (self.fsm.state == 'PickTower'): # in tower tile picker state; place tower and exit tile picker state
+		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; place tower and exit tile picker state
 			self.spawnTower(self.hitTile.getPos() + Vec3(0.,0,1.))
-			self.hitTile.set_shader_input("final_brightness", 1.0)
+			self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
 			self.fsm.demand('Gameplay')
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
@@ -559,17 +531,11 @@ class DuckOfCards(ShowBase):
 
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
 			if self.hitTile != None: 			# clear hightlighting on non-hovered tiles
-				#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
-				#self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
-				#litTile = self.tileMap.getChild(self.hitTile)
-				#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.groundTex, 1)
-				##self.hitTile.clearTexture(self.tileHighlightTS)
 				for tile in self.tileMap.getChildren():
-					tile.set_shader_input("final_brightness", 1.0)
-				#self.hitTile.removeShader(highlightShader)
-				#self.tileMap.getChild(self.hitTile).find_all_materials()[0].setDiffuse((1,1,1,1))
-				#self.groundMaterial.setDiffuse((1.,1.,1.,1.))
+					#if tile != self.hitTile:
+					tile.set_texture(self.tileTS, self.groundTex, 1)
 				self.hitTile = None
+
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 				# get mouse position and traverse tileMap with the pickerRay
 				mousePos = self.mouseWatcherNode.getMouse()
@@ -578,26 +544,14 @@ class DuckOfCards(ShowBase):
 
 				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
 					# sort by closest first
-					self.tpQueue.sortEntries() 			
+					self.tpQueue.sortEntries() 
 					# find tile node and get tile index
 					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
-					#print(tileColl)
-					#tileInd = tileColl.getName().split("-")[1] # trim name 
 					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
-					#print("mouseover: " + str(self.tileMap.getChild(tileInd)))
 					# highlight on mouseover
-					litTile = self.tileMap.getChild(tileInd)
-					print("highlighting: " + str(litTile))
-					#litTile.replaceTexture(self.groundTex, self.tileHighlight)
-					#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.tileHighlight, 1)
-					##litTile.setTexture(self.tileHighlightTS, self.tileHighlight)
-					litTile.set_shader_input("final_brightness", 1.3)
-					#litTile.setShader(self.highlightShader)
-					#self.tileMap.getChild(tileInd).find_all_materials()[0].setDiffuse((1.2,1.2,1.2,1))
-					#self.groundMaterial.setDiffuse((1.2,1.2,1.2,1.))
-					#self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
-					# save index of hit tile
-					self.hitTile = litTile
+					self.hitTile = self.tileMap.getChild(tileInd)
+					print("highlighting: " + str(self.hitTile))
+					self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
 					#print(tileInd)
 
 		return task.cont

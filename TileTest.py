@@ -1,8 +1,8 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import loadPrcFileData, DirectionalLight, OrthographicLens, Vec3
 from panda3d.core import CollisionBox, CollisionNode, BitMask32, CollisionRay, CollisionTraverser
-from panda3d.core import CollisionHandlerQueue, TextureStage
-import complexpbr as cpbr
+from panda3d.core import CollisionHandlerQueue, TextureStage, Texture
+#import complexpbr as cpbr
 
 config_vars = """
 win-size 1200 800
@@ -19,6 +19,8 @@ loadPrcFileData("", config_vars)
 class TileTest(ShowBase):
 	def __init__(self):
 		ShowBase.__init__(self)
+
+		base.disableMouse()
 
 		# initialise pbr for models, and shaders
 		#cpbr.apply_shader(self.render)
@@ -37,19 +39,13 @@ class TileTest(ShowBase):
 		self.dirLightNp.setHpr(-70,-40,20)
 		render.setLight(self.dirLightNp)
 
-		# initialise the dimetric camera (26.565deg for square pixels)
 		self.cam.setPos(0.,0.,3.)
-		#self.cam.setHpr(-45,-26.565,0)
-		# isometric angle! 35.264deg
+		# isometric angle 35.264deg
 		self.cam.setHpr(-45,-35.264,0)
-		#self.cam.setR(45) 			 # global 45deg roll
-		#self.cam.setY(-45) 		 # global 45deg yaw
-		#self.cam.setR(self.cam, 45) # local  45deg roll
 		self.cam.setPos(self.cam, self.cam.getPos() + Vec3(0.,-12.,-4.))
 		# orthographic lens to commit to isometric/dimetric view
 		self.lens = OrthographicLens()
 		self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
-		#self.lens.setFilmSize(WindowProperties.get_size())
 		self.lens.setNearFar(-40,40)
 		self.cam.node().setLens(self.lens)
 
@@ -57,21 +53,26 @@ class TileTest(ShowBase):
 		self.tileMap = self.render.attachNewNode("tileMap")
 		self.tileModel = self.loader.loadModel("assets/groundTile.egg")
 
-		#self.tileTS = self.tileModel.findAllTextureStages()[0]
 		self.tileTS = TextureStage('tileTS')
 		self.tileTS.setMode(TextureStage.M_add)
+		self.tileTS.setTexcoordName('UVMap')
 		self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
 		self.groundTex = self.loader.loadTexture("assets/ground-tile.png")
 
 		tile = self.tileMap.attachNewNode("tile-0")
 		tile.setPos(0,0,0)
 		self.tileModel.instanceTo(tile)
+		tileHitbox = CollisionBox(tile.getPos(),1., 1., 1.)
+		tileColl = CollisionNode(str(tile)+'-cnode')
+		tileColl.setIntoCollideMask(BitMask32(0x01))
+		tileNp = tile.attachNewNode(tileColl)
+		tileNp.node().addSolid(tileHitbox)
+		#tileNp.show()
 		tile = self.tileMap.attachNewNode("tile-1")
 		tile.setPos(2,0,0)
 		self.tileModel.instanceTo(tile)
 		#tile.set_texture(self.tileTS, self.groundTex, 1)
-
-		tileHitbox = CollisionBox(tile.getPos(),1., 1., 1.)
+		tileHitbox = CollisionBox(tile.getPos()-Vec3(2,0,0),1., 1., 1.)
 		tileColl = CollisionNode(str(tile)+'-cnode')
 		tileColl.setIntoCollideMask(BitMask32(0x01))
 		tileNp = tile.attachNewNode(tileColl)
@@ -87,16 +88,17 @@ class TileTest(ShowBase):
 		tpNode.addSolid(self.tPickerRay)
 		self.tilePicker.addCollider(tpNp, self.tpQueue)
 		self.hitTile = None
-		self.tilePicker.showCollisions(render)
+		#self.tilePicker.showCollisions(render)
 
 		self.taskMgr.add(self.update, "update", taskChain='default')
 
 	def update(self, task):
-		if self.hitTile != None: 			# clear hightlighting on non-hovered tiles
-				for tile in self.tileMap.getChildren():
-					#tile.set_shader_input("final_brightness", 1.0)
-					tile.set_texture(self.tileTS, self.groundTex, 1)
-				self.hitTile = None
+		if self.hitTile != None: 			# clear highlighting on non-hovered tiles
+			for tile in self.tileMap.getChildren():
+				#if tile != self.hitTile:
+				tile.set_texture(self.tileTS, self.groundTex, 1)
+			self.hitTile = None
+
 		if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 			# get mouse position and traverse tileMap with the pickerRay
 			mousePos = self.mouseWatcherNode.getMouse()
@@ -105,15 +107,16 @@ class TileTest(ShowBase):
 
 			if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
 				# sort by closest first
-				self.tpQueue.sortEntries() 			
+				self.tpQueue.sortEntries() 
 				# find tile node and get tile index
 				tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
 				tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
 				# highlight on mouseover
 				self.hitTile = self.tileMap.getChild(tileInd)
 				print("highlighting: " + str(self.hitTile))
-				#self.hitTile.set_shader_input("final_brightness", 1.3)
 				self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
+
+		return task.cont
 
 app = TileTest()
 app.run()
