@@ -14,6 +14,7 @@ from random import randint
 #import simplepbr as spbr 
 import complexpbr as cpbr 
 import SpriteModel as spritem
+import Buildings
 
 config_vars = """
 win-size 1200 800
@@ -59,15 +60,7 @@ waveNum = 0
 # TODO:
 	# = BUGFIX: texture problems with paths and highlight not rendering correctly
 	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
-	# = BUGFIX: when trying to enable hoverover textures for tile picker, we hit this terminal error:
-		# Assertion failed: image_ptr >= orig_image_ptr && image_ptr + view_si  File "C:\Users\gossf\Documents\Games-Kate\duck-of-cards\main.py", line 794, in <module>
-		#ze <= or  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 3331, in run: self.taskMgr.run()
-		#_ptr  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 2158, in __igLoop: self.graphicsEngine.renderFrame()
-	 	#+ tex->get_raAssertionError: image_ptr >= orig_image_ptr && image_ptr + view_size <= orig_image_ptr + tex->get_ram_mipmap_image_size(n) at line 13787 of c:\buildslave\sdk-windows-amd64\build\panda\src\glstuff\glGraphicsStateGuardian_src.cxx
-		#m_mipmap_image_size(n) at line 13787 of c:\buildslave\sdk-windows-amd64\buiException ignored in atexit callback <function exitfunc at 0x00000219BE9BE0C0>ld\p:
-		#anTraceback (most recent call last): da\src  File "C:\Panda3D-1.10.15-x64\direct\showbase\ShowBase.py", line 84, in exitfunc
-		#\glstuff\glGraphicsStateGuardian_src.cxx
-		#:display:gsg:glgsg(error): Could not load ground-tile-highlight_0
+	# = BUGFIX: highlighting tiles on mouseover when placing tower
 	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck)
 	# = dogs need flipped the right way when going y+
 	# - procedurally generate paths- have enemies follow path?
@@ -207,143 +200,6 @@ class UI():
 	# 	# TODO : BROKEN : THIS RECEIVES THE WORLD POSITION, BUT IT NEEDS THE SCREEN POSITION
 	# 	cdNP.setPos(pos)
 
-class PlayerCastle():
-	def __init__(self):
-		self.model = base.loader.loadModel("playerBase.gltf")
-		self.map = render.attachNewNode("castleMap")
-		self.model.reparentTo(self.map)
-		self.model.setScale(0.2)
-		self.model.setPos(0.,0.,0.65)
-		self.model.setColor(0.3,0.35,0.6,1.)
-		self.model.setTag("castle", '1')
-		self.model.node().setIntoCollideMask(BitMask32(0x04))
-
-	def takeDmg(self):
-		global castleHP
-		# take damage
-		castleHP -= 5.0
-		# flash red for a moment
-		Sequence(Func(self.model.setColor,1.2,0.1,0.1,1.),
-				Wait(0.1),
-				Func(self.model.setColor,0.3,0.35,0.6,1.)).start()
-
-class Arrow():
-	def __init__(self, pos, enemyId):
-		self.node = base.arrowModelNd.attachNewNode("arrow")
-		base.arrowModel.instanceTo(self.node)
-		self.node.setScale(0.6)
-		self.enemy = base.enemies[int(enemyId)]
-		self.damage = 10.0
-		self.node.setP(30)
-		self.node.setY(-45) 
-		# modified origin for realism. 
-		self.node.setPos(pos + Vec3(-.1, 0., .7))
-		self.node.lookAt(self.getTargetPos())
-		#projectileNp = render.attachNewNode(ActorNode('projectile'))
-		# self.cnode = CollisionNode('arrowColNode')
-		# self.cnode.setFromCollideMask(BitMask32(0x00))
-		# self.fromObject = self.node.attachNewNode(self.cnode)
-		# self.fromObject.node().addSolid(CollisionSphere(0, 0, 0, .2))
-		#self.fromObject.show()
-		self.move = self.node.posInterval(.5, self.getTargetPos(), 
-											self.node.getPos(), fluid=1, blendType='noBlend')
-
-		# on arrival/despawn, do damage to enemy
-		self.despawnInt = Func(self.despawn)
-		self.moveSeq = Sequence(
-			self.move,
-			self.despawnInt
-		).start()
-
-	def getTargetPos(self):
-		# get up-to-date position
-		p = self.enemy.node.getPos()
-		# adjust for visual accuracy
-		#p[0] += .55
-		#p[1] -= .3
-		p[2] += .75
-		return p
-
-	def despawn(self):
-		# do damage and remove
-		self.enemy.damage(self.damage)
-		self.node.removeNode()
-
-class Tower():
-	def __init__(self, towerNode, pos):
-		self.node = towerNode
-		self.node.setPos(pos)
-		#self.node.setScale()
-		self.rateOfFire = 1.0
-		self.damage = 1.0
-		self.range = 5.0
-		self.cooldown = 3.0
-		self.onCD = True
-
-		# initialise detection of enemies in range
-		self.rangeSphere = CollisionSphere(0, 0, 0, self.range)
-		rcnode = CollisionNode(str(self.node) + '-range-cnode')
-		rcnode.setFromCollideMask(BitMask32(0x02))
-		self.rangeColliderNp = self.node.attachNewNode(rcnode)
-		self.rangeColliderNp.node().addSolid(self.rangeSphere)
-		#self.rangeColliderNp.show()
-
-		self.enemyDetector = CollisionTraverser(str(self.node) + '-enemy-detector')
-		self.detectorQueue = CollisionHandlerQueue()
-		self.enemyDetector.addCollider(self.rangeColliderNp, self.detectorQueue)
-		#self.enemyDetector.showCollisions(base.enemyModelNd)
-
-		self.cdInt = Wait(self.cooldown/self.rateOfFire)
-		self.cdSeq = Sequence(self.cdInt,Func(self.cdOFF))
-		self.scanSeq = Sequence(Func(self.update))
-		self.cdSeq.start()
-		self.scanSeq.loop()
-
-		#base.taskMgr.add(self.update, str(self.node)+"_update", taskChain='default')
-		# task replaced with sequence for pausability
-
-	def update(self):
-		if not self.onCD: self.attackScan()
-
-	#def update(self, task):
-		#	# scan for enemies if not on cooldown
-		#	if not self.onCD: self.attackScan()
-		#	return task.cont
-		#def pause(self):
-		#	base.taskMgr.getTasksNamed(str(self.node)+"_update").pause() 
-		#   ^ this pause method isn't a thing. using a sequence instead of the task
-
-	def cdOFF(self):
-		if not self.onCD: return 1
-		else: 
-			self.onCD = False
-			return 0
-
-	def attackScan(self):
-		# check for intersecting collisionsolids
-		self.enemyDetector.traverse(base.enemyModelNd)
-		#print("scanning...")
-
-		if (self.detectorQueue.getNumEntries() > 0):
-			#print("enemy detected!")
-			# sort queue of detected solids by closest (n.b. edit here for priority options)
-			self.detectorQueue.sortEntries()
-
-			# find nodePoint and ID of detected enemy
-			enemyNp = self.detectorQueue.entries[0].getIntoNodePath()
-			#target = self.detectorQueue.entries[0].getSurfacePoint(enemyNp)
-			enemyId = enemyNp.getName()[26:len(enemyNp.getName())-6] #print(enemyId)
-			# FIRE
-			self.launchProjectiles(enemyId)
-
-			# put self on cooldown
-			self.onCD = True
-			self.cdSeq.start()
-
-	def launchProjectiles(self, enemy):
-		print("firing at " + enemy)
-		newArrow = Arrow(self.node.getPos(), enemy)
-
 class GamestateFSM(FSM):
 	def __init__(self): 
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
@@ -472,8 +328,8 @@ class DuckOfCards(ShowBase):
 
 		# initialise pbr for models, and shaders
 		#spbr.__init__("Duck of Cards")
-		#cpbr.apply_shader(self.render)
-		#cpbr.screenspace_init()
+		cpbr.apply_shader(self.render)
+		cpbr.screenspace_init()
 		render.setShaderAuto()
         # example of how to turn on Global Illumination (GI)
 		#self.render.set_shader_input('shadow_boost', 0.3)
@@ -528,12 +384,12 @@ class DuckOfCards(ShowBase):
 		#self.groundTex.setMagfilter(SamplerState.FT_linear_mipmap_linear)
 		#self.groundTex.setMinfilter(SamplerState.FT_linear_mipmap_linear)
 		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.gltf")
-		self.tileHighlight = self.loader.loadTexture("assets/white.png")
+		self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
 		self.tileHighlightTS = TextureStage('tile-highlight')
-		self.tileHighlightTS.setMode(TextureStage.M_add)
-		self.tileHighlight.set_format(Texture.F_rgb32)
-		self.tileHighlight.setWrapU(Texture.WM_repeat)
-		self.tileHighlight.setWrapV(Texture.WM_repeat)
+		self.tileHighlightTS.setMode(TextureStage.M_emission)
+		#self.tileHighlight.set_format(Texture.F_rgb8)
+		#self.tileHighlight.setWrapU(Texture.WM_repeat)
+		#self.tileHighlight.setWrapV(Texture.WM_repeat)
 		#self.tileHighlight = self.loader.loadCubeMap("assets/ground-tile-highlight_#.png")
 		#self.tileHighlight.setMagfilter(SamplerState.FT_linear_mipmap_linear)
 		#self.tileHighlight.setMinfilter(SamplerState.FT_linear_mipmap_linear)
@@ -564,13 +420,13 @@ class DuckOfCards(ShowBase):
 		tpNp = self.cam.attachNewNode(tpNode)
 		tpNode.addSolid(self.tPickerRay)
 		self.tilePicker.addCollider(tpNp, self.tpQueue)
-		self.hitTile = 0
+		self.hitTile = None
 		# UNCOMMENT FOR DEBUG 
 		#self.tilePicker.showCollisions(render)
 		#tpNp.show()
 
 		# create a player castle object
-		self.castle = PlayerCastle()
+		self.castle = Buildings.PlayerCastle()
 		# self.cPickerRay = CollisionRay()
 		# self.castlePicker = CollisionTraverser()
 		# self.castleQueue = CollisionHandlerQueue()
@@ -647,7 +503,7 @@ class DuckOfCards(ShowBase):
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower'): # in tower tile picker state; place tower and exit tile picker state
-			self.spawnTower(self.tileMap.getChild(self.hitTile).getPos() + Vec3(0.,0,1.))
+			self.spawnTower(self.hitTile.getPos() + Vec3(0.,0,1.))
 			self.fsm.demand('Gameplay')
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
@@ -695,18 +551,16 @@ class DuckOfCards(ShowBase):
 	def towerPlaceTask(self, task):
 		#self.fsm.demand('PickTower')
 
-		if self.hitTile != 0:
-			#clear hightlighting
-			#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
-			#self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
-			litTile = self.tileMap.getChild(self.hitTile)
-			#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.groundTex, 1)
-			litTile.clearTexture(self.tileHighlightTS)
-			#self.tileMap.getChild(self.hitTile).find_all_materials()[0].setDiffuse((1,1,1,1))
-			#self.groundMaterial.setDiffuse((1.,1.,1.,1.))
-			self.hitTile = 0
-
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
+			if self.hitTile != None: 			# clear hightlighting on non-hovered tiles
+				#self.tileMap.getChild(self.hitTile).setColor(1.0,1.0,1.0,1.0)
+				#self.tileMap.getChild(self.hitTile).replaceTexture(self.tileHighlight, self.groundTex)
+				#litTile = self.tileMap.getChild(self.hitTile)
+				#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.groundTex, 1)
+				self.hitTile.clearTexture(self.tileHighlightTS)
+				#self.tileMap.getChild(self.hitTile).find_all_materials()[0].setDiffuse((1,1,1,1))
+				#self.groundMaterial.setDiffuse((1.,1.,1.,1.))
+				self.hitTile = None
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 				# get mouse position and traverse tileMap with the pickerRay
 				mousePos = self.mouseWatcherNode.getMouse()
@@ -723,8 +577,8 @@ class DuckOfCards(ShowBase):
 					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
 					#print("mouseover: " + str(self.tileMap.getChild(tileInd)))
 					# highlight on mouseover
-					print(self.tileMap.getChild(tileInd).findAllTextureStages())
-					litTile = self.tileMap.getChild(self.hitTile)
+					litTile = self.tileMap.getChild(tileInd)
+					print("highlighting: " + str(litTile))
 					#litTile.replaceTexture(self.groundTex, self.tileHighlight)
 					#litTile.set_texture(litTile.find_texture_stage('Base Color'), self.tileHighlight, 1)
 					litTile.setTexture(self.tileHighlightTS, self.tileHighlight)
@@ -732,7 +586,7 @@ class DuckOfCards(ShowBase):
 					#self.groundMaterial.setDiffuse((1.2,1.2,1.2,1.))
 					#self.tileMap.getChild(tileInd).setColor(1.5,1.5,1.4,1.0)
 					# save index of hit tile
-					self.hitTile = tileInd
+					self.hitTile = litTile
 					#print(tileInd)
 
 		return task.cont
@@ -811,7 +665,7 @@ class DuckOfCards(ShowBase):
 		#pos = pos - Vec3(1.5,1.5,0)
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
 		newTowerNd = self.towerModelNd.attachNewNode("tower " + str(self.towerCount))
-		newTower = Tower(newTowerNd, pos)
+		newTower = Buildings.Tower(newTowerNd, pos)
 		self.towers.append(newTower)
 		self.towerModel.instanceTo(newTower.node)
 		self.towerCount += 1
