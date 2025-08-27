@@ -25,7 +25,7 @@ class TileTest(ShowBase):
 		# initialise pbr for models, and shaders
 		#cpbr.apply_shader(self.render)
 		#cpbr.screenspace_init()
-		render.setShaderAuto()
+		#render.setShaderAuto()
 		#cpbr.set_cubebuff_active()
 		#cpbr.set_cubebuff_inactive()
 		#base.complexpbr_z_tracking = True
@@ -57,11 +57,14 @@ class TileTest(ShowBase):
 		self.tileTS.setMode(TextureStage.M_add)
 		self.tileTS.setTexcoordName('UVMap')
 		self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
+		#self.groundTex = self.tileModel.find('**/Base')
+		#print(self.groundTex)
 		self.groundTex = self.loader.loadTexture("assets/ground-tile.png")
 
 		tile = self.tileMap.attachNewNode("tile-0")
 		tile.setPos(0,0,0)
 		self.tileModel.instanceTo(tile)
+		tile.set_texture(self.tileTS, self.groundTex, 1)
 		tileHitbox = CollisionBox(tile.getPos(),1., 1., 1.)
 		tileColl = CollisionNode(str(tile)+'-cnode')
 		tileColl.setIntoCollideMask(BitMask32(0x01))
@@ -71,7 +74,7 @@ class TileTest(ShowBase):
 		tile = self.tileMap.attachNewNode("tile-1")
 		tile.setPos(2,0,0)
 		self.tileModel.instanceTo(tile)
-		#tile.set_texture(self.tileTS, self.groundTex, 1)
+		tile.set_texture(self.tileTS, self.groundTex, 1)
 		tileHitbox = CollisionBox(tile.getPos()-Vec3(2,0,0),1., 1., 1.)
 		tileColl = CollisionNode(str(tile)+'-cnode')
 		tileColl.setIntoCollideMask(BitMask32(0x01))
@@ -90,6 +93,14 @@ class TileTest(ShowBase):
 		self.hitTile = None
 		#self.tilePicker.showCollisions(render)
 
+		self.pathTex = loader.loadTexture("assets/road-tile.png")
+		self.pathTS = TextureStage('path-textureStage')
+		self.pathTS.setTexcoordName('UVMap')
+		self.pathTS.setMode(TextureStage.MDecal)
+
+		tile.setTexture(self.pathTS, self.pathTex)
+		#tile.setTexHpr(self.pathTS, 0,0,0)
+
 		self.taskMgr.add(self.update, "update", taskChain='default')
 
 	def update(self, task):
@@ -97,6 +108,7 @@ class TileTest(ShowBase):
 			for tile in self.tileMap.getChildren():
 				#if tile != self.hitTile:
 				tile.set_texture(self.tileTS, self.groundTex, 1)
+				print('texture cleared on ' + str(tile))
 			self.hitTile = None
 
 		if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen

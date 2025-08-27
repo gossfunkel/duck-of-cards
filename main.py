@@ -4,6 +4,7 @@ from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Mate
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
 from panda3d.core import CollisionSphere, CollisionCapsule, Point3, TextureStage, TexGenAttrib
 from panda3d.core import CollisionBox, TransparencyAttrib, CardMaker, Texture, SamplerState
+from panda3d.core import PNMImage
 from direct.gui.OnscreenImage import OnscreenImage
 from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
@@ -376,6 +377,10 @@ class DuckOfCards(ShowBase):
 		self.tileTS.setMode(TextureStage.M_add)
 		self.tileTS.setTexcoordName('UVMap')
 		self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
+		#self.tileHighlight = PNMImage()
+		#self.tileHighlight.read("assets/highlight-tile.png")
+		#self.groundPNM = PNMImage()
+		#self.groundPNM.read("assets/ground-tile.png")
 		self.groundTex = self.loader.loadTexture("assets/ground-tile.png")
 		self.createMap(20,20)
 
@@ -386,6 +391,7 @@ class DuckOfCards(ShowBase):
 		#self.pathTex.set_format(Texture.F_rgba32)
 		self.pathTS = TextureStage('path-textureStage')
 		self.pathTS.setMode(TextureStage.MDecal)
+		self.pathTS.setTexcoordName('UVMap')
 		self.placePaths()
 
 		# initialise the tile picker
@@ -482,6 +488,7 @@ class DuckOfCards(ShowBase):
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; place tower and exit tile picker state
 			self.spawnTower(self.hitTile.getPos() + Vec3(0.,0,1.))
 			self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
+			#self.hitTile.findTexture(self.tileTS).load(self.groundPNM)
 			self.fsm.demand('Gameplay')
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
@@ -533,7 +540,9 @@ class DuckOfCards(ShowBase):
 			if self.hitTile != None: 			# clear hightlighting on non-hovered tiles
 				for tile in self.tileMap.getChildren():
 					#if tile != self.hitTile:
-					tile.set_texture(self.tileTS, self.groundTex, 1)
+					#tile.findTexture(self.tileTS).load(self.groundPNM)
+					tile.setTexture(self.tileTS, self.groundTex, 2)
+					#print(tile.ls())
 				self.hitTile = None
 
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
@@ -552,6 +561,7 @@ class DuckOfCards(ShowBase):
 					self.hitTile = self.tileMap.getChild(tileInd)
 					print("highlighting: " + str(self.hitTile))
 					self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
+					#self.hitTile.findTexture(self.tileTS).load(self.tileHighlight)
 					#print(tileInd)
 
 		return task.cont
@@ -590,6 +600,7 @@ class DuckOfCards(ShowBase):
 					tileNp = tile.attachNewNode(tileColl)
 					tileNp.node().addSolid(tileHitbox)
 					self.tileModel.instanceTo(tile)
+					tile.set_texture(self.tileTS, self.groundTex, 0)
 					tile.setTag("tile-" + str(counter), str(counter))
 					#tileNp.show() 					# uncomment to show hitboxes
 					counter += 1
@@ -599,9 +610,13 @@ class DuckOfCards(ShowBase):
 		# find appropriate tile to decal
 		# TODO replace this with a wee path budget to spend and a random walk algorithm to spend it
 		for tile in self.tileMap.children: # currently covers the cardinal directions
-			if ((tile.getX() == 0 and tile.getY() != 0) or (tile.getY() == 0 and tile.getX() != 0)):
+			if (tile.getX() == 0 and tile.getY() != 0):
 				tile.setTexture(self.pathTS, self.pathTex)
-				#tile.setTexPos(TextureStage.getDefault(), 1., 1., 0.)
+				tile.setTexHpr(self.pathTS, 90,0,0)
+				tile.setTexScale(self.pathTS, 1.1,1.1,1)
+				tile.setTexPos(self.pathTS, -.1, .1, 0.)
+			if (tile.getY() == 0 and tile.getX() != 0):
+				tile.setTexture(self.pathTS, self.pathTex, 3)
 		# apply decal
 
 	def spawnEnemy(self, pos): 				# spawn an individual creep

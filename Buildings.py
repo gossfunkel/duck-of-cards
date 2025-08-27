@@ -1,5 +1,6 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import BitMask32, CollisionNode, CollisionSphere, CollisionTraverser, CollisionHandlerQueue
+from panda3d.core import Vec3
 from direct.interval.IntervalGlobal import *
 
 class PlayerCastle():
@@ -16,7 +17,7 @@ class PlayerCastle():
 	def takeDmg(self):
 		global castleHP
 		# take damage
-		castleHP -= 5.0
+		base.castleHP -= 5.0
 		# flash red for a moment
 		Sequence(Func(self.model.setColor,1.2,0.1,0.1,1.),
 				Wait(0.1),
