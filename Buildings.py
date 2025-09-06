@@ -15,9 +15,8 @@ class PlayerCastle():
 		self.model.node().setIntoCollideMask(BitMask32(0x04))
 
 	def takeDmg(self):
-		global castleHP
 		# take damage
-		base.castleHP -= 5.0
+		base.dmgCastle(5.0)
 		# flash red for a moment
 		Sequence(Func(self.model.setColor,1.2,0.1,0.1,1.),
 				Wait(0.1),
@@ -53,6 +52,7 @@ class Arrow():
 
 	def getTargetPos(self):
 		# get up-to-date position
+		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
 		p = self.enemy.node.getPos()
 		# adjust for visual accuracy
 		#p[0] += .55

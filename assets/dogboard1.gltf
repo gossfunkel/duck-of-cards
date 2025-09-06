@@ -75,7 +75,7 @@
 					"index":0
 				},
 				"metallicFactor":0.10000000149011612,
-				"roughnessFactor":0.828549861907959
+				"roughnessFactor":0.8999999761581421
 			}
 		},
 		{
@@ -148,7 +148,7 @@
 			"source":0
 		},
 		{
-			"sampler":0,
+			"sampler":1,
 			"source":1
 		}
 	],
@@ -297,6 +297,10 @@
 		}
 	],
 	"samplers":[
+		{
+			"magFilter":9729,
+			"minFilter":9987
+		},
 		{
 			"magFilter":9729,
 			"minFilter":9987,

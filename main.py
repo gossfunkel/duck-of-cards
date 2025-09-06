@@ -34,6 +34,7 @@ loadPrcFileData("", config_vars)
 castleHP = 100
 playerGold = 10
 waveNum = 0
+testing = True
 
 # GAME OPENING / TUTORIAL
 	#
@@ -62,7 +63,8 @@ waveNum = 0
 	# = BUGFIX: texture problems with paths and highlight not rendering correctly
 	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
 	# = BUGFIX: highlighting tiles on mouseover when placing tower
-	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck)
+	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck). n.b.
+		# pausing at the wrong time causes hundreds of dogs to spawn
 	# = dogs need flipped the right way when going y+
 	# - procedurally generate paths- have enemies follow path?
 	# - terminal-style output/dialogue at the bottom left
@@ -206,10 +208,11 @@ class GamestateFSM(FSM):
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
 
 		# enums-style dict of enemy spawn positions
-		self.spawner = {1: Vec3(0.,18.,0.),  # Y position (top left)
-						2: Vec3(18.,0.,0.),  # X position (top right)
-						3: Vec3(0.,-18.,0.), # Yneg position (bottom right)
-						4: Vec3(-18.,0.,0.)} # Xneg position (bottomg left)
+		# n.b. the directions are named for which way the model is *facing*
+		self.spawner = {1: Vec3(0.,18.,0.),  # Yneg position (top left)
+						2: Vec3(18.,0.,0.),  # Xneg position (top right)
+						3: Vec3(0.,-18.,0.), # Y position (bottom right)
+						4: Vec3(-18.,0.,0.)} # X position (bottom left)
 
 		# empty object to be filled with ui
 		self.ui = None
@@ -217,18 +220,36 @@ class GamestateFSM(FSM):
 		#self.choosingTile = False
 		# spawn waves 								TODO - figure out spawning from both sides
 		#													without incrementing waveNum twice:
-		self.waveSchedule = Sequence(
-			Wait(5.0),
-			Func(base.spawnEnemyWave, 5, self.spawner[1]),
-			Wait(25.0),
-			Func(base.spawnEnemyWave, 5, self.spawner[2]),
-			Wait(25.0),
-			Func(base.spawnEnemyWave, 5, self.spawner[3]),
-			Wait(25.0),
-			Func(base.spawnEnemyWave, 10, self.spawner[1]),
-			Wait(25.0),
-			Func(base.spawnEnemyWave, 10, self.spawner[4])
-		)
+		if testing:
+			self.waveSchedule = Sequence(
+				Wait(5.0),
+				Func(base.spawnEnemyWave, 1, self.spawner[1]),
+				Wait(2.0),
+				Func(base.spawnEnemyWave, 1, self.spawner[2]),
+				Wait(2.0),
+				Func(base.spawnEnemyWave, 1, self.spawner[3]),
+				Wait(2.0),
+				Func(base.spawnEnemyWave, 1, self.spawner[4]),
+				Wait(2.0),
+				Func(base.spawnEnemyWave, 10, self.spawner[1]),
+				Func(base.spawnEnemyWave, 10, self.spawner[3]),
+				Wait(2.0),
+				Func(base.spawnEnemyWave, 10, self.spawner[2]),
+				Func(base.spawnEnemyWave, 10, self.spawner[4]),
+			)
+		else:
+			self.waveSchedule = Sequence(
+				Wait(5.0),
+				Func(base.spawnEnemyWave, 5, self.spawner[1]),
+				Wait(25.0),
+				Func(base.spawnEnemyWave, 5, self.spawner[2]),
+				Wait(25.0),
+				Func(base.spawnEnemyWave, 5, self.spawner[3]),
+				Wait(25.0),
+				Func(base.spawnEnemyWave, 10, self.spawner[4]),
+				Wait(25.0),
+				Func(base.spawnEnemyWave, 10, self.spawner[2])
+			)	
 		self.waveSchedule.start()
 
 	def enterGameplay(self):
@@ -450,6 +471,10 @@ class DuckOfCards(ShowBase):
 		self.duckModel.setH(-90)
 		self.randomDuck = spritem.NormalInnocentDuck("an-innocent-duck", Vec3(-2.,-2.,2.), 1.)
 
+		#self.sphere = self.loader.loadModel("smiley")
+		#self.sphere.setPos(0,0,3)
+		#self.sphere.reparentTo(render)
+
 		# initialise the finite-state machine
 		self.fsm = GamestateFSM()
 
@@ -475,6 +500,8 @@ class DuckOfCards(ShowBase):
 
 	def update(self, task):
 		dt = globalClock.getDt()
+
+		#if testing: self.sphere.setPos(self.sphere.getPos()[0] + 0.01,0,3)
 
 		if not (castleHP > 0):
 			self.fsm.demand('GameOver')
@@ -519,6 +546,7 @@ class DuckOfCards(ShowBase):
 
 	# camera movement function (step around by blocks of 1x1)
 	def move(self, direction):
+		assert self.cam.getPos() != None, f"base.cam doesn't return a position when queried"
 		if direction == 'left':
 			self.cam.setPos(self.cam.getPos() + Vec3(-1,1,0))
 		elif direction == 'right':
@@ -619,8 +647,8 @@ class DuckOfCards(ShowBase):
 				tile.setTexture(self.pathTS, self.pathTex, 3)
 		# apply decal
 
-	def spawnEnemy(self, pos): 				# spawn an individual creep
-		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, 1.)
+	def spawnEnemy(self, pos, facing): 				# spawn an individual creep
+		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, facing, 1.)
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
 
@@ -630,8 +658,13 @@ class DuckOfCards(ShowBase):
 
 		print("Spawning wave " + str(waveNum))
 		self.spawnSeq = Sequence() 
+		if pos == self.fsm.spawner[1]: facing = 'Yneg'
+		elif pos == self.fsm.spawner[2]: facing = 'Xneg'
+		elif pos == self.fsm.spawner[3]: facing = 'Y'
+		elif pos == self.fsm.spawner[4]: facing = 'X'
+		else: raise ValueError('Enemies spawning in an unapproved location [base.spawnEnemyWave]')
 		for _ in range(num):
-			self.spawnSeq.append(Func(self.spawnEnemy,pos))
+			self.spawnSeq.append(Func(self.spawnEnemy,pos,facing))
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.append(Func(self.resetSpawnSeq))
 		self.spawnSeq.start()
@@ -667,6 +700,11 @@ class DuckOfCards(ShowBase):
 		waveNum = 0
 		playerGold = 0
 		castleHP = 100
+
+	def dmgCastle(self, dmg):
+		global castleHP
+		if testing: print("Castle taking " + str(dmg) + " damage!")
+		castleHP -= dmg
 
 	def quit(self): 		# exit the game in a reasonable fashion
 		self.fsm.cleanup()

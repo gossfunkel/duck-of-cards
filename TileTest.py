@@ -98,7 +98,7 @@ class TileTest(ShowBase):
 		self.pathTS.setTexcoordName('UVMap')
 		self.pathTS.setMode(TextureStage.MDecal)
 
-		tile.setTexture(self.pathTS, self.pathTex)
+		tile.setTexture(self.pathTS, self.pathTex, 3)
 		#tile.setTexHpr(self.pathTS, 0,0,0)
 
 		self.taskMgr.add(self.update, "update", taskChain='default')
@@ -126,7 +126,7 @@ class TileTest(ShowBase):
 				# highlight on mouseover
 				self.hitTile = self.tileMap.getChild(tileInd)
 				print("highlighting: " + str(self.hitTile))
-				self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
+				self.hitTile.set_texture(self.tileTS, self.tileHighlight, 2)
 
 		return task.cont
 

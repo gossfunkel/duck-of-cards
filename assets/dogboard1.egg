@@ -4,7 +4,7 @@
   <Scalar> baseg { 0.800000 }
   <Scalar> baseb { 0.800000 }
   <Scalar> basea { 1.000000 }
-  <Scalar> roughness { 0.828550 }
+  <Scalar> roughness { 0.819486 }
   <Scalar> metallic { 0.100000 }
   <Scalar> local { 0.000000 }
   <Scalar> diffr { 1.0 }
@@ -18,11 +18,7 @@
   <Scalar> uv-name { UVMap }
   <Scalar> minfilter { LINEAR_MIPMAP_LINEAR }
   <Scalar> magfilter { LINEAR_MIPMAP_LINEAR }
-  <Scalar> wrap { BORDER_COLOR }
-  <Scalar> borderr { 1 }
-  <Scalar> borderg { 1 }
-  <Scalar> borderb { 1 }
-  <Scalar> bordera { 1 }
+  <Scalar> wrap { REPEAT }
 }
 
   <Group> Empty.001 {
