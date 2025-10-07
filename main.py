@@ -565,7 +565,7 @@ class DuckOfCards(ShowBase):
 		#self.fsm.demand('PickTower')
 
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
-			if self.hitTile != None: 			# clear hightlighting on non-hovered tiles
+			if self.hitTile != None: 			# clear highlighting on non-hovered tiles
 				for tile in self.tileMap.getChildren():
 					#if tile != self.hitTile:
 					#tile.findTexture(self.tileTS).load(self.groundPNM)
