@@ -75,7 +75,7 @@ class DuckBase(ShowBase):
 		self.centreTile.setTransparency(1)
 
 		self.hilightCard = self.render.attachNewNode(card_maker.generate())
-		self.hilightCard.setPos(0.,0.,-10.)
+		self.hilightCard.setPos(0.,0.,-11.)
 		self.hilightCard.setHpr(0., -90., 45.)
 		highlightTile = loader.loadTexture("../duck-of-cards/assets/ground-tile-highlight_4.png")
 		highlightTile.setWrapU(Texture.WM_clamp)
@@ -99,7 +99,9 @@ class DuckBase(ShowBase):
 				tiley = (tileScaleFactor*x + y*tileScaleFactor) - 50.*tileScaleFactor
 				tile.setPos(tilex,tiley,0.)
 
-				tileHitbox = CollisionBox(Point3(0., 0., -0.1),Point3(1.9, 1.9, 0.1))
+				print(self.centreTile.getTightBounds())
+
+				tileHitbox = CollisionBox(Point3(0., 0., -0.1),Point3(1., 1., 0.1))
 				tileColl = CollisionNode(str(tile)+'-cnode')
 				tileColl.setIntoCollideMask(BitMask32(0x01))
 				colliderNp = tile.attachNewNode(tileColl)
