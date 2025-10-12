@@ -8,8 +8,12 @@
 		{
 			"name":"Scene",
 			"nodes":[
+<<<<<<< HEAD
 				0,
 				1
+=======
+				0
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 			]
 		}
 	],
@@ -22,6 +26,7 @@
 				1,
 				2
 			]
+<<<<<<< HEAD
 		},
 		{
 			"camera":0,
@@ -49,12 +54,28 @@
 				"znear":0.10000000149011612
 			},
 			"type":"perspective"
+=======
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 		}
 	],
 	"materials":[
 		{
 			"doubleSided":true,
+<<<<<<< HEAD
 			"name":"Material"
+=======
+			"name":"Material",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.800000011920929,
+					0.800000011920929,
+					0.800000011920929,
+					1
+				],
+				"metallicFactor":0,
+				"roughnessFactor":0.5
+			}
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 		}
 	],
 	"meshes":[
@@ -65,10 +86,16 @@
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
+<<<<<<< HEAD
 						"TEXCOORD_0":2,
 						"TANGENT":3
 					},
 					"indices":4,
+=======
+						"TEXCOORD_0":2
+					},
+					"indices":3,
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 					"material":0
 				}
 			]
@@ -105,12 +132,15 @@
 		},
 		{
 			"bufferView":3,
+<<<<<<< HEAD
 			"componentType":5126,
 			"count":72,
 			"type":"VEC4"
 		},
 		{
 			"bufferView":4,
+=======
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 			"componentType":5123,
 			"count":96,
 			"type":"SCALAR"
@@ -137,6 +167,7 @@
 		},
 		{
 			"buffer":0,
+<<<<<<< HEAD
 			"byteLength":1152,
 			"byteOffset":2304,
 			"target":34962
@@ -145,12 +176,20 @@
 			"buffer":0,
 			"byteLength":192,
 			"byteOffset":3456,
+=======
+			"byteLength":192,
+			"byteOffset":2304,
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
+<<<<<<< HEAD
 			"byteLength":3648,
+=======
+			"byteLength":2496,
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 			"uri":"playerBase.bin"
 		}
 	]

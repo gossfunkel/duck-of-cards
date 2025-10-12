@@ -81,6 +81,7 @@ class DuckBase(ShowBase):
 		self.groundTex.setMagfilter(SamplerState.FT_nearest)
 		self.groundTex.setMinfilter(SamplerState.FT_nearest)
 
+<<<<<<< HEAD
 		# self.hilightCard = self.render.attachNewNode(card_maker.generate())
 		# self.hilightCard.setPos(0.,0.,-10.)
 		# self.hilightCard.setHpr(0., -90., 45.)
@@ -89,6 +90,16 @@ class DuckBase(ShowBase):
 		self.highlightTex.setWrapV(Texture.WM_clamp)
 		self.highlightTex.setMagfilter(SamplerState.FT_nearest)
 		self.highlightTex.setMinfilter(SamplerState.FT_nearest)
+=======
+		self.hilightCard = self.render.attachNewNode(card_maker.generate())
+		self.hilightCard.setPos(0.,0.,-11.)
+		self.hilightCard.setHpr(0., -90., 45.)
+		highlightTile = loader.loadTexture("../duck-of-cards/assets/ground-tile-highlight_4.png")
+		highlightTile.setWrapU(Texture.WM_clamp)
+		highlightTile.setWrapV(Texture.WM_clamp)
+		highlightTile.setMagfilter(SamplerState.FT_nearest)
+		highlightTile.setMinfilter(SamplerState.FT_nearest)
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 
 		tileInd = 0
 		for x in range(width):
@@ -99,8 +110,19 @@ class DuckBase(ShowBase):
 				tile.setHpr(0., -90., 45.)
 				tile.setTransparency(1)
 
+<<<<<<< HEAD
 				tileHitbox = CollisionBox(Point3(0, 0, -0.1),Point3(1.4, 1.4, .01))
 				tileColl = CollisionNode('cnode_'+str(tile))
+=======
+<<<<<<< HEAD
+				print(self.centreTile.getTightBounds())
+
+				tileHitbox = CollisionBox(Point3(0., 0., -0.1),Point3(1., 1., 0.1))
+=======
+				tileHitbox = CollisionBox(Point3(0., 0., -0.1),Point3(1., 1., .2))
+>>>>>>> 2635c5e8558aade14953e2503ef2c102322a6c10
+				tileColl = CollisionNode(str(tile)+'-cnode')
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 				tileColl.setIntoCollideMask(BitMask32(0x01))
 				if (x != 50 or y != 50):
 					tileColl.setTag("TILEground",str(tileInd))

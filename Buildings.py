@@ -25,10 +25,17 @@ class PlayerCastle():
 
 class Arrow():
 	def __init__(self, pos, enemyId):
+<<<<<<< HEAD
 		self.arrowModel = base.loader.loadModel("assets/arrow2.gltf")
 		self.node = render.attachNewNode("arrow")
 		self.arrowModel.reparentTo(self.node)
 		self.arrowModel.setScale(0.06)
+=======
+		self.node = base.arrowModelNd.attachNewNode("arrow")
+		base.arrowModel.instanceTo(self.node)
+		# TODO this is the wrong kind of instancing! Remove it:(
+		self.node.setScale(0.6)
+>>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 		self.enemy = base.enemies[int(enemyId)]
 		self.damage = 10.0
 		self.node.setP(30)
@@ -66,6 +73,7 @@ class Arrow():
 		# do damage and remove
 		self.enemy.damage(self.damage)
 		self.node.removeNode()
+		ModelPool.releaseModel("assets/arrow.gltf")
 
 class Tower():
 	def __init__(self, pos):
