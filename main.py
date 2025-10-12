@@ -21,6 +21,7 @@ config_vars = """
 win-size 1200 800
 show-frame-rate-meter 1
 hardware-animated-vertices true
+model-cache-dir
 basic-shaders-only false
 threading-model Cull/Draw
 """
@@ -122,18 +123,18 @@ class UI():
 		self.gameOverScreen.hide()
 		self.gameOverLabel = DirectLabel(text = "Game Over!", parent = self.gameOverScreen,
 										scale = 0.1, pos = (0, 0, 0.2))
-		restartBtn 	= DirectButton(text="Restart", command=base.fsm.exitGameOver, pos=(-0.3, 0, -0.2),
-								parent=self.gameOverScreen, scale=0.1)
-		quitBtn 	= DirectButton(text="Quit", command=base.quit, pos=(0.3, 0, -0.2),
-								parent=self.gameOverScreen, scale=0.1)
+		restartBtn 	= DirectButton(text = "Restart", command = base.fsm.exitGameOver, pos = (-0.3, 0, -0.2),
+								parent = self.gameOverScreen, scale = 0.1)
+		quitBtn 	= DirectButton(text = "Quit", command = base.quit, pos = (0.3, 0, -0.2),
+								parent = self.gameOverScreen, scale = 0.1)
 		
 		# construct 'card menu' elements
 		self.cardMenuScreen = DirectFrame(frameSize = (-1.2, 1.2, -.8, .8),
-		#							items=[newTowerBtn], initialItem=0,
+		#							items = [newTowerBtn], initialItem = 0,
         #                           fadeScreen = 0.7,
                                    relief = DGG.FLAT)
-		newTowerBtn	= DirectButton(text="10", command=base.buyTower,
-										pos=(-0.3, 0, -0.3), parent=self.cardMenuScreen, scale=0.3)
+		newTowerBtn	= DirectButton(text = "10", command = base.buyTower,
+										pos = (-0.3, 0, -0.3), parent = self.cardMenuScreen, scale = 0.3)
 		newTowerCM = CardMaker('newTowerCard')
 		newTowerCM.setFrame(-0.5,0.,-0.605,0.)
 		newTowerCard = aspect2d.attachNewNode(newTowerCM.generate())
