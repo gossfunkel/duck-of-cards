@@ -135,10 +135,14 @@ class SpriteModSide(SpriteMod):
 class Enemy(SpriteModSide):
 	def __init__(self, name, pos, facing, speed):
 		assert pos != None, f'Enemy spawning with no position!'
-		# create node
-		self.node = base.enemyModelNd.attachNewNode(name)
-		self.node.setPos(pos)
-		self.nodepath = base.enemyModel.instanceTo(self.node)
+
+		self.model = base.loader.loadModel("assets/dogboard1.gltf")
+		self.model.setH(90)
+		self.model.setScale(0.1)
+		#self.model.setPos(0.,0.,.8)
+		self.node = render.attachNewNode("enemy-" + str(name))
+		self.node.setPos(pos + Vec3(0.,0.,.8))
+		#self.nodepath = base.enemyModel.instanceTo(self.node)
 		super().__init__(str(name), pos, speed)
 		assert (facing == 'X' or facing == 'Y' or facing == 'Xneg' or facing == 'Yneg'), f'Enemy given incorrect facing direction!'
 		print(str(name) + " spawning")
@@ -262,10 +266,14 @@ class Enemy(SpriteModSide):
 
 class NormalInnocentDuck(SpriteMod): 
 	def __init__(self, name, pos, speed):
-		self.node = base.duckNp.attachNewNode(name)
+		self.model = base.loader.loadModel("assets/duckboard1.gltf")
+		self.model.setScale(0.05)
+		self.model.setH(-90)
+		self.node = render.attachNewNode("duck-" + str(name))
 		self.node.setPos(pos)
-		self.nodepath = base.duckModel.instanceTo(self.node)
-		self.nodepath.setH(180)
+		#self.nodepath = base.duckModel.instanceTo(self.node)
+		# self.nodepath.setR(90)
+		# self.nodepath.setH(90)
 		super().__init__(str(name), pos, speed)
 		#print("spawning a normal duck")
 		self.demand('Xneg')

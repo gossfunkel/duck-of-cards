@@ -12,20 +12,18 @@ from direct.interval.LerpInterval import LerpPosInterval
 from enum import Enum
 from direct.fsm.FSM import FSM
 from random import randint
-#import simplepbr as spbr 
-#import complexpbr as cpbr 
+from math import sqrt
 import SpriteModel as spritem
 import Buildings
 
 config_vars = """
 win-size 1200 800
 show-frame-rate-meter 1
-hardware-animated-vertices true
-basic-shaders-only false
-threading-model Cull/Draw
+//hardware-animated-vertices true
+//basic-shaders-only false
+//model-cache-dir
+//threading-model Cull/Draw
 """
-#texture-scale 0.5
-#"""
 
 loadPrcFileData("", config_vars)
 
@@ -48,9 +46,9 @@ testing = True
 	# "BEGONE! BWAAACK- WACK wack..."
 	# > ...okay?
 	# <Enter PickTower; user places first tower>
-	# "Bweeeell, you took care of them. Perhaps there will be a place for you in my fine little kingdom."
+	# "Bweeeell, you took care of them. Perhaps there will be a place for you in my fine little fiefdom."
 	# "The fine ducks of the pond have been set upon by dogs for months, since they found our new home."
-	# "Of course, I keep all the kingdom safe with my mighty magic cards!"
+	# "Of course, I keep all the fiefdom safe with my mighty magic cards!"
 	# "That is, here in the castle, where I won't be set upon by dogs..."
 	# "So what do you say- are you going to abandon these poor townspeople to their fate, or 
 	# face your duty to duke and for duck's sake? Will you take the cards out and help build our defenses?"
@@ -58,6 +56,51 @@ testing = True
 	# "For now, you may join us in the Castle of Pond Duchy, our bastion in the quackmire."
 	# "When these brutal invasion forces are pushed back, we can "
 	# <Level 1 splash. Initial card offer. Timer for first wave starts as soon as card picked>
+
+# CLIMAX CUTSCENE
+	# 
+	# > There isn't even such a think as a Duke of Cards! There's the King, the Queen, and the Ja-
+	# "SILENCE! You have betrayed my trust, traveller, and now it is time for you to travel on."
+	# > What if I don't want to?
+	# "Don't- SQUAAAH the insolence! You walk into my fiefdom, use my magic, and now you spurn and insult me."
+	# "I see this fiefdom requires a firmer hand than I have carried so far."
+	# "Very well- if you won't accept the power I offer, I shall hold it myself..."
+	# [Duke casts the card and things go dark]
+	# > ...
+	# > Um... duke?
+	# > ...
+	# > Hello?
+	# // YOU HAVE PLAYED WITH POWERS YOU DO NOT UNDERSTAND // [screenshake]
+	# > Who sai-
+	# // YOU WILL COME TO KNOW WHY THE LIKES OF YOU AND YOUR FEEBLE FEATHERED FRIEND 
+	# 		DO NOT RECOGNISE WHAT YOU TOYED WITH //
+	# > He's not my friend
+	# // THROUGH HIM YOU KNOW MORE FELLOWSHIP THAN YOU HAVE WITH ANYTHING YOU WILL SEE FROM NOW //
+	# // WELCOME TO THE DAWN OF YOUR WORLD'S UNMAKING //
+	# [screen brightens and lighting is changed for purple, after a moment there's a rumble]
+	# [the castle erupts and a portal tears open in its place]
+	# > ...
+	# [Duke [Evil] sprite appears]
+	# > You! What did you do?!
+	# // THE TIME FOR NEGOTIATION IS PAST // WE CAN SEE YOU WILL BE NO HINDRANCE //
+	# > What are you?
+	# // WE ARE THE RAW VIOLENCE THAT YEARNS WITHIN EVERY FIBRE TO ESCAPE FROM ITS FICKLE CAGE //
+	# // WE ARE THE FIRE THAT YOU HOLD TO YOUR ENEMIES FACE, THE FIRE THAT PROMISES YOUR WORLD TO THE ASHES //
+	# // YOU WILL TASTE THE PRICE OF POWER //
+	# [Next round begins; current defenses should hold]
+	# [after that round, ally appears]
+	# "Traveller! What's going on? What happened to the castle??"
+	# > The Duke used some kind of powerful card, but I think he was tricked into releasing some kind of... demons.
+	# "DEMONS?!? You mean, those things that just attacked us?"
+	# > They came from the portal. I think there will be more. Perhaps much more.
+	# "Wh- what do we do?!"
+	# > Do we have any more cards? Or anything else we can use?
+	# "More cards... I'll see what I can find! In the mean time, I suppose I can ask the other townspeople to help 
+	# 	put up some barricades?"
+	# > Thank you. I'll do what I can to hold off the hordes.
+	# "G- godspeed!" [scurries off. Barricades interface appears. After placing, the next round begins]
+	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
+
 
 # TODO:
 	# = BUGFIX: texture problems with paths and highlight not rendering correctly
@@ -209,10 +252,10 @@ class GamestateFSM(FSM):
 
 		# enums-style dict of enemy spawn positions
 		# n.b. the directions are named for which way the model is *facing*
-		self.spawner = {1: Vec3(0.,18.,0.),  # Yneg position (top left)
-						2: Vec3(18.,0.,0.),  # Xneg position (top right)
-						3: Vec3(0.,-18.,0.), # Y position (bottom right)
-						4: Vec3(-18.,0.,0.)} # X position (bottom left)
+		self.spawner = {1: Vec3(-18.,18.,0.),  	# (top left)
+						2: Vec3(18.,18.,0.),  	# (top right)
+						3: Vec3(18.,-18.,0.), 	# (bottom right)
+						4: Vec3(-18.,-18.,0.)} 	# (bottom left)
 
 		# empty object to be filled with ui
 		self.ui = None
@@ -347,26 +390,11 @@ class DuckOfCards(ShowBase):
 
 		# disable default panda3d mouse camera controls
 		base.disableMouse()
-
-		# initialise pbr for models, and shaders
-		#spbr.__init__("Duck of Cards")
-		#cpbr.apply_shader(self.render)
-		#cpbr.screenspace_init()
 		render.setShaderAuto()
-		#cpbr.set_cubebuff_active()
-		#cpbr.set_cubebuff_inactive()
-		#base.complexpbr_z_tracking = True
-
-		# example of how to set up bloom -- complexpbr.screenspace_init() must have been called first
-		#screen_quad = base.screen_quad
-		#screen_quad.set_shader_input("bloom_intensity", 0.25)
-		#screen_quad.set_shader_input("bloom_threshold", 0.3)
-		#screen_quad.set_shader_input("bloom_blur_width", 20)
-		#screen_quad.set_shader_input("bloom_samples", 4)
 
 		# Make dark background 
 		#self.set_background_color(0.42,0.65,1.,1.)
-		self.set_background_color(0.02,0.,0.05,1.)
+		self.set_background_color(0.5,0.6,0.85,1.)
 
 		# create sunlight
 		self.dirLight = DirectionalLight('dirLight')
@@ -378,32 +406,17 @@ class DuckOfCards(ShowBase):
 		render.setLight(self.dirLightNp)
 
 		# initialise the camera - isometric angle (35.264deg)
-		self.cam.setPos(0.,0.,3.)
-		self.cam.setHpr(-45,-35.264,0)
+		self.cam.setPos(0.,-5.,3.)
+		self.cam.setHpr(0,-35.264,0)
 		#self.cam.setHpr(-45,-26.565,0) # dimetric angle - 26.565deg for square pixels
 		self.cam.setPos(self.cam, self.cam.getPos() + Vec3(0.,-12.,-4.))
 		# orthographic lens to commit to isometric view
-		self.lens = OrthographicLens()
-		self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
-		self.lens.setNearFar(-40,40)
-		self.cam.node().setLens(self.lens)
+		#self.lens = OrthographicLens()
+		#self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
+		#self.lens.setNearFar(-40,40)
+		#self.cam.node().setLens(self.lens)
 
-		# generate ground tile model and instance, creating node map
-		self.tileMap = self.render.attachNewNode("tileMap")
-		self.tileModel = self.loader.loadModel("assets/groundTile.egg")
-		self.lakeTiles = self.render.attachNewNode("lakeTiles")
-		self.lakeTileModel = self.loader.loadModel("assets/lakeTile.egg")
-
-		self.tileTS = TextureStage('tileTS')
-		self.tileTS.setMode(TextureStage.M_add)
-		self.tileTS.setTexcoordName('UVMap')
-		self.tileHighlight = self.loader.loadTexture("assets/highlight-tile.png")
-		#self.tileHighlight = PNMImage()
-		#self.tileHighlight.read("assets/highlight-tile.png")
-		#self.groundPNM = PNMImage()
-		#self.groundPNM.read("assets/ground-tile.png")
-		self.groundTex = self.loader.loadTexture("assets/ground-tile.png")
-		self.createMap(20,20)
+		self.createMap(40,40)
 
 		#self.tileModel.ls()
 
@@ -440,36 +453,21 @@ class DuckOfCards(ShowBase):
 		# cscNode.addSolid(self.cPickerRay)
 		# self.castlePicker.addCollider(cscNp, self.castleQueue)
 
-		# initialise projectile models
-		self.arrowModel = self.loader.loadModel("assets/arrow2.gltf")
-		self.arrowModelNd = self.render.attachNewNode("arrow-models")
-		self.arrowModel.setScale(0.1)
-
-		# initialise tower models
+		# initialise tower tracking
 		self.towerCount = 0
 		self.towers = []
-		self.towerModel = self.loader.loadModel("tower.gltf")
-		self.towerModelNd = self.render.attachNewNode("tower-models")
-		self.towerModel.setScale(0.2)
 
 		# initialise enemy models & data
 		self.enemyCount = 0
 		self.enemies = []
 		self.spawnSeq = None
-		self.enemyModel = self.loader.loadModel("assets/dogboard1.gltf")
-		self.enemyModel.setH(90)
-		self.enemyModelNd = self.render.attachNewNode("enemy-models")
+		#self.enemyModelNd = self.render.attachNewNode("enemy-models")
 		#self.enemyModel.reparentTo(render)
-		self.enemyModel.setScale(0.1)
-		self.enemyModel.setPos(0.,0.,.8)
 		#print(self.enemyModel.findAllMaterials())
 
 		# load a random duck as a placeholder for civilian ducks
-		self.duckModel = self.loader.loadModel("assets/duckboard1.gltf")
-		self.duckNp = self.render.attachNewNode("duck-models")
-		self.duckModel.setScale(0.05)
-		self.duckModel.setH(-90)
-		self.randomDuck = spritem.NormalInnocentDuck("an-innocent-duck", Vec3(-2.,-2.,2.), 1.)
+		#self.duckNp = self.render.attachNewNode("duck_models")
+		self.randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(-2.,-2.,2.), 1.)
 
 		#self.sphere = self.loader.loadModel("smiley")
 		#self.sphere.setPos(0,0,3)
@@ -498,6 +496,94 @@ class DuckOfCards(ShowBase):
 
 		self.fsm.demand('Gameplay')
 
+	# LOAD-IN
+	def createMap(self, width, length): 	# generate pickable tiles to place towers on
+		# generate ground tile model and instance, creating node map
+		self.tileMap = self.render.attachNewNode("tileMap")
+		# self.tileModel = self.loader.loadModel("assets/groundTile.egg")
+		# self.lakeTiles = self.render.attachNewNode("lakeTiles")
+		# self.lakeTileModel = self.loader.loadModel("assets/lakeTile.egg")
+
+		self.tileTS = TextureStage('tileTS')
+		self.tileTS.setMode(TextureStage.M_replace)
+		self.tileTS.setTexcoordName('UVMap')
+
+		# each tile is assigned a unique index, locally referred to as tileIndex:
+		tileIndex = 0
+		# a random spawn point for the duck pond is generated:
+		pondSpawnPoint = [randint(2,int(width)-2), randint(2,int(length)-2)]
+		print("pond spawn generation: " + str(pondSpawnPoint))
+
+		self.card_maker = CardMaker('tile')
+		#card_maker.setColor(1.,1.,1.,1.)
+		self.tileScaleFactor = sqrt(2) # pythagoras; turning squares sideways makes triangles maybe?
+		self.card_maker.setFrame(0.,self.tileScaleFactor,0.,self.tileScaleFactor)
+		self.card_maker.setHasUvs(1)
+		self.card_maker.clearColor()
+
+		self.groundTex = loader.loadTexture("../duck-of-cards/assets/ground-tile_4.png")
+		self.groundTex.setWrapU(Texture.WM_clamp)
+		self.groundTex.setWrapV(Texture.WM_clamp)
+		self.groundTex.setMagfilter(SamplerState.FT_nearest)
+		self.groundTex.setMinfilter(SamplerState.FT_nearest)
+
+		self.pondTex = loader.loadTexture("../duck-of-cards/assets/lake-tile_4.png")
+		self.pondTex.setWrapU(Texture.WM_clamp)
+		self.pondTex.setWrapV(Texture.WM_clamp)
+		self.pondTex.setMagfilter(SamplerState.FT_nearest)
+		self.pondTex.setMinfilter(SamplerState.FT_nearest)
+
+		# self.hilightCard = self.render.attachNewNode(card_maker.generate())
+		# self.hilightCard.setPos(0.,0.,-10.)
+		# self.hilightCard.setHpr(0., -90., 45.)
+		self.highlightTex = loader.loadTexture("../duck-of-cards/assets/ground-tile-highlight_4.png")
+		self.highlightTex.setWrapU(Texture.WM_clamp)
+		self.highlightTex.setWrapV(Texture.WM_clamp)
+		self.highlightTex.setMagfilter(SamplerState.FT_nearest)
+		self.highlightTex.setMinfilter(SamplerState.FT_nearest)
+
+		for x in range(width) :
+			for y in range(length):
+				# Im choosing to have regular tiles to make user selections more reliable.
+				# 	This gives us discrete units for procedurally modelling the duck pond, 
+				# 	rather than modelling freeform user selections (!!)
+				# The pond generation will happen in a shader
+				tileIndex += 1
+				tile = self.tileMap.attachNewNode(self.card_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
+				tile.setPos(x-y,x+y-length,0.)
+				tile.setHpr(0., -90., 45.)
+				tile.setTransparency(1)
+
+				tileHitbox = CollisionBox(Point3(0, 0, -0.1),Point3(1.39, 1.39, 0.001))
+				tileColl = CollisionNode('cnode_'+str(tile))
+				tileColl.setIntoCollideMask(BitMask32(0x01))
+				colliderNp = tile.attachNewNode(tileColl)
+				colliderNp.setHpr(0., 90., 0.)
+				colliderNp.node().addSolid(tileHitbox)
+				#colliderNp.show()
+				if (x==pondSpawnPoint[0] and y==pondSpawnPoint[1]):
+					tile.setTexture(self.tileTS, self.pondTex)
+					tileColl.setTag("TILEpond",str(tileIndex))
+				else: 						# place a regular grass tile
+					tile.setTexture(self.tileTS, self.groundTex)
+					tileColl.setTag("TILEground",str(tileIndex))
+				
+		# then apply decals like paths, decor/flora&fauna, obstacles etc
+
+	def placePaths(self):
+		# find appropriate tile to decal
+		# TODO replace this with a wee path budget to spend and a random walk algorithm to spend it
+		for tile in self.tileMap.children: # currently covers the cardinal directions
+			if (tile.getX() == 0 and tile.getY() != 0):
+				tile.setTexture(self.pathTS, self.pathTex)
+				#tile.setTexHpr(self.pathTS, 90,0,0)
+				#tile.setTexScale(self.pathTS, 1.1,1.1,1)
+				tile.setTexPos(self.pathTS, -.1, .1, 0.)
+			if (tile.getY() == 0 and tile.getX() != 0):
+				tile.setTexture(self.pathTS, self.pathTex, 3)
+		# apply decal
+
+	# TASK FUNCTIONS
 	def update(self, task):
 		dt = globalClock.getDt()
 
@@ -513,8 +599,10 @@ class DuckOfCards(ShowBase):
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; place tower and exit tile picker state
+			# todo: sequence for animating tower placement - clunk
 			self.spawnTower(self.hitTile.getPos() + Vec3(0.,0,1.))
 			self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
+			#self.hitTile.setColor(1.,1.,1.,1.)
 			#self.hitTile.findTexture(self.tileTS).load(self.groundPNM)
 			self.fsm.demand('Gameplay')
 		# else: 
@@ -548,13 +636,13 @@ class DuckOfCards(ShowBase):
 	def move(self, direction):
 		assert self.cam.getPos() != None, f"base.cam doesn't return a position when queried"
 		if direction == 'left':
-			self.cam.setPos(self.cam.getPos() + Vec3(-1,1,0))
+			self.cam.setPos(self.cam.getPos() + Vec3(-1,0,0))
 		elif direction == 'right':
-			self.cam.setPos(self.cam.getPos() + Vec3(1,-1,0))
+			self.cam.setPos(self.cam.getPos() + Vec3(1,0,0))
 		elif direction == 'fwd':
-			self.cam.setPos(self.cam.getPos() + Vec3(1,1,0))
+			self.cam.setPos(self.cam.getPos() + Vec3(0,1,0))
 		elif direction == 'back':
-			self.cam.setPos(self.cam.getPos() + Vec3(-1,-1,0))
+			self.cam.setPos(self.cam.getPos() + Vec3(0,-1,0))
 		elif direction == 'zoomIn':
 			self.cam.setScale(self.cam.getScale()*0.8)
 		elif direction == 'zoomOut':
@@ -567,9 +655,10 @@ class DuckOfCards(ShowBase):
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
 			if self.hitTile != None: 			# clear highlighting on non-hovered tiles
 				for tile in self.tileMap.getChildren():
-					#if tile != self.hitTile:
-					#tile.findTexture(self.tileTS).load(self.groundPNM)
-					tile.setTexture(self.tileTS, self.groundTex, 2)
+					if tile != self.hitTile:
+						#tile.findTexture(self.tileTS).load(self.groundPNM)
+						tile.setTexture(self.tileTS, self.groundTex, 1)
+					#tile.setColor(1.,1.,1.,1.)
 					#print(tile.ls())
 				self.hitTile = None
 
@@ -582,71 +671,27 @@ class DuckOfCards(ShowBase):
 				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
 					# sort by closest first
 					self.tpQueue.sortEntries() 
-					# find tile node and get tile index
-					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
-					tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
-					# highlight on mouseover
-					self.hitTile = self.tileMap.getChild(tileInd)
-					print("highlighting: " + str(self.hitTile))
-					self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
+					# # find tile node and get tile index
+					tileColl = self.tpQueue.getEntry(0).getIntoNodePath()
+					#self.hitTile = tileColl.getNode(1)
+					#print(tileColl)
+					if (tileColl.getTag("TILEground") != ""):
+						# highlight on mouseover
+						tileInd = int(tileColl.getTag("TILEground"))
+						self.hitTile = self.tileMap.getChild(tileInd)
+						self.hitTile.setTexture(self.tileTS, self.highlightTex, 1)
+					# tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
+					# tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
+					# # highlight on mouseover
+					# self.hitTile = self.tileMap.getChild(tileInd)
+					# print("highlighting: " + str(self.hitTile))
+					# #self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
+					# self.hitTile.setColor(1.2,1.2,1.2,1.)
 					#self.hitTile.findTexture(self.tileTS).load(self.tileHighlight)
 					#print(tileInd)
 
 		return task.cont
-
-	def createMap(self, width, length): 	# generate pickable tiles to place towers on
-		counter = 0
-		lakeSpawnPoint = [randint(2,int(width)-2), randint(2,int(length)-2)]
-		print("lake spawn generation: " + str(lakeSpawnPoint))
-		for y in range(length) :
-			for x in range(width):
-				# generate tile, starting at -(width/2),-(height/2) and ending at width/2,height/2
-				# 	e.g. for width & height 10, creates a grid from -5,-5 to 5,5
-				# Im choosing to have regular tiles to make user selections more reliable.
-				# 	This allows for relatively simple procedural modeling by definite units, 
-				# 	rather than freeform user selections, or something even more complex.
-				# The actual pond generation will happen in a vertex shader, but it will
-				# 	need a texture tag or application to specific objects to work.
-				if (x==lakeSpawnPoint[0] and y==lakeSpawnPoint[1]):
-					tile = self.lakeTiles.attachNewNode("origin-laketile")
-					#tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
-					tile.setPos(width - (2*width-x*2),length - (2*length-y*2),-0.5)
-					self.lakeTileModel.instanceTo(tile)
-					tile.setTag("tile-lake-",'0')					
-					# elseif (place terrain at x,y)
-					# 	self.terrainTileModel.instanceTo(tile)
-					# 	tile.setTag("tile-terrain-" + str(counter),str(counter))
-					# 	createTerrainCollider(tile)
-				else: 						# place a regular grass tile
-					tile = self.tileMap.attachNewNode("tile-" + str(counter))
-					#tile.setPos(width/2 - (width-x),length/2 - (length-y),1.)
-					tile.setPos(width - (2*width-x*2),length - (2*length-y*2),-0.5)
-					#tileHitbox = CollisionBox(tile.getPos()/100,.46, .46, .5)
-					tileHitbox = CollisionBox(tile.getPos()/50,.92, .92, .5)
-					tileColl = CollisionNode(str(tile)+'-cnode')
-					tileColl.setIntoCollideMask(BitMask32(0x01))
-					tileNp = tile.attachNewNode(tileColl)
-					tileNp.node().addSolid(tileHitbox)
-					self.tileModel.instanceTo(tile)
-					tile.set_texture(self.tileTS, self.groundTex, 0)
-					tile.setTag("tile-" + str(counter), str(counter))
-					#tileNp.show() 					# uncomment to show hitboxes
-					counter += 1
-		# then apply decals like paths, decor/flora&fauna, obstacles etc
-
-	def placePaths(self):
-		# find appropriate tile to decal
-		# TODO replace this with a wee path budget to spend and a random walk algorithm to spend it
-		for tile in self.tileMap.children: # currently covers the cardinal directions
-			if (tile.getX() == 0 and tile.getY() != 0):
-				tile.setTexture(self.pathTS, self.pathTex)
-				tile.setTexHpr(self.pathTS, 90,0,0)
-				tile.setTexScale(self.pathTS, 1.1,1.1,1)
-				tile.setTexPos(self.pathTS, -.1, .1, 0.)
-			if (tile.getY() == 0 and tile.getX() != 0):
-				tile.setTexture(self.pathTS, self.pathTex, 3)
-		# apply decal
-
+	
 	def spawnEnemy(self, pos, facing): 				# spawn an individual creep
 		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, facing, 1.)
 		self.enemyCount += 1
@@ -677,11 +722,9 @@ class DuckOfCards(ShowBase):
 	def spawnTower(self, pos):
 		#pos = pos - Vec3(1.5,1.5,0)
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
-		newTowerNd = self.towerModelNd.attachNewNode("tower " + str(self.towerCount))
-		newTower = Buildings.Tower(newTowerNd, pos)
+		newTower = Buildings.Tower(pos)
+		# add to list to allow pausing of sequences
 		self.towers.append(newTower)
-		self.towerModel.instanceTo(newTower.node)
-		self.towerCount += 1
 		return 0
 
 	def buyTower(self):

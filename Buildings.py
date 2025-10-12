@@ -5,11 +5,12 @@ from direct.interval.IntervalGlobal import *
 
 class PlayerCastle():
 	def __init__(self):
-		self.model = base.loader.loadModel("playerBase.gltf")
-		self.map = render.attachNewNode("castleMap")
-		self.model.reparentTo(self.map)
+		self.model = base.loader.loadModel("assets/playerBase.gltf")
+		self.node = render.attachNewNode("castleMap")
+		self.model.reparentTo(self.node)
 		self.model.setScale(0.2)
-		self.model.setPos(0.,0.,0.65)
+		self.node.setPos(0.,0.,0.)
+		self.node.setP(90)
 		self.model.setColor(0.3,0.35,0.6,1.)
 		self.model.setTag("castle", '1')
 		self.model.node().setIntoCollideMask(BitMask32(0x04))
@@ -24,9 +25,10 @@ class PlayerCastle():
 
 class Arrow():
 	def __init__(self, pos, enemyId):
-		self.node = base.arrowModelNd.attachNewNode("arrow")
-		base.arrowModel.instanceTo(self.node)
-		self.node.setScale(0.6)
+		self.arrowModel = base.loader.loadModel("assets/arrow2.gltf")
+		self.node = render.attachNewNode("arrow")
+		self.arrowModel.reparentTo(self.node)
+		self.arrowModel.setScale(0.06)
 		self.enemy = base.enemies[int(enemyId)]
 		self.damage = 10.0
 		self.node.setP(30)
@@ -66,9 +68,13 @@ class Arrow():
 		self.node.removeNode()
 
 class Tower():
-	def __init__(self, towerNode, pos):
-		self.node = towerNode
+	def __init__(self, pos):
+		towerModel = base.loader.loadModel("assets/tower.gltf")
+		towerModel.setScale(0.2)
+		self.node = render.attachNewNode("tower")
+		towerModel.reparentTo(self.node)
 		self.node.setPos(pos)
+		self.node.setP(90)
 		#self.node.setScale()
 		self.rateOfFire = 1.0
 		self.damage = 1.0
