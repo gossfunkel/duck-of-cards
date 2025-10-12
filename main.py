@@ -19,17 +19,14 @@ import Buildings
 config_vars = """
 win-size 1200 800
 show-frame-rate-meter 1
-<<<<<<< HEAD
 //hardware-animated-vertices true
 //basic-shaders-only false
 //model-cache-dir
 //threading-model Cull/Draw
-=======
 hardware-animated-vertices true
 model-cache-dir
 basic-shaders-only false
 threading-model Cull/Draw
->>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 """
 
 loadPrcFileData("", config_vars)
