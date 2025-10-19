@@ -4,7 +4,8 @@ from panda3d.core import DirectionalLight, TextNode, CollisionHandlerQueue, Mate
 from panda3d.core import CollisionTraverser, CollisionRay, CollisionNode, OrthographicLens
 from panda3d.core import CollisionSphere, CollisionCapsule, Point3, TextureStage, TexGenAttrib
 from panda3d.core import CollisionBox, TransparencyAttrib, CardMaker, Texture, SamplerState
-from panda3d.core import PNMImage
+from panda3d.core import PNMImage, ShaderInput
+from direct.task import Task
 from direct.gui.OnscreenImage import OnscreenImage
 from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
@@ -40,16 +41,9 @@ testing = True
 
 # GAME OPENING / TUTORIAL
 	#
-	# <intro: darkened background, specific sprite art>
-	# "QUACK! I mean QUICK! Invaders are at the gates! There's no time to explain- you, traveller!"
-	# > ...
-	# "Yes, you. What's your name?"
-	# "Wait- there's no TIME! Take this; it is one of my fine and valuable magic cards."
-	# "It will summon a magical tower to defend the innocent ducks of the pond wherever you place it."
-	# "Place it carefully and fight back these merciless attackers who would make mincemeat of us!"
-	# "BEGONE! BWAAACK- WACK wack..."
-	# > ...okay?
+	# <intro dialogue sequence>
 	# <Enter PickTower; user places first tower>
+	# dialogue sequence 2:
 	# "Bweeeell, you took care of them. Perhaps there will be a place for you in my fine little fiefdom."
 	# "The fine ducks of the pond have been set upon by dogs for months, since they found our new home."
 	# "Of course, I keep all the fiefdom safe with my mighty magic cards!"
@@ -105,28 +99,53 @@ testing = True
 	# "G- godspeed!" [scurries off. Barricades interface appears. After placing, the next round begins]
 	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
 
-
 # TODO:
 	# = BUGFIX: texture problems with paths and highlight not rendering correctly
+	# = BUGFIX: spritemodels no longer visible
+	# = BUGFIX: problems with orientation of models and model recolouring between different systems
+				# => turret orientation, colour
+				# => spritemodel orientation
+				# => arrow orientation
+				# => castle colour
 	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
 	# = BUGFIX: highlighting tiles on mouseover when placing tower
 	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck). n.b.
-		# pausing at the wrong time causes hundreds of dogs to spawn
-	# = dogs need flipped the right way when going y+
-	# - procedurally generate paths- have enemies follow path?
+		# pausing at the wrong time causes hundreds of dogs to spawn (!!)
+	# --- PHASE 1) Basic game mechanics
+	# = finish spritemodel directional system (models facing the right way, animate turn)
+	# - procedurally generate paths- have enemies follow path? pathfinding
 	# - terminal-style output/dialogue at the bottom left
-	# - improve card menu and add more options
-	# - add pond and ducks
+	# - improve card menu and add more cards
 	# - add more enemies and bigger waves
 	# - set up initial card offer
-	# - add more card options
+	# - add more card options and do nicer card art 
+	# - add tower models for other tower types (magic,fire,sniper,bomb,poison)
+	# - make enemies 'pop' (coin scatter animation?) and improve tile placement (animation, sfx)
 	# - confine mouse to window edges and trigger camera movement when it hits an edge
+	# --- PHASE 2) Story & progression
+	# - add in all dialogue & character sprites
+	# - make pause menu and save/load functionality	
+	# - make and add some music!
+	# - implement missions (only a few, for the main story sections)
+	# - improve progression display and splashes/notifiers for mission/wave progress
+	# - add more terrain/some random plant sprites
 	# - give towers more prioritising options (furthest forward, closest, highest hp etc)
 	# - update enemy, tower, and castle models
-	# - add more terrain/some random plant sprites
-	# - add tower models for other tower types (magic,fire,sniper,bomb,poison)
-	# - add wandering duck models
+	# - add pond and wandering ducks
+	# --- PHASE 3) Ending & finishing touches
 	# - procedural spawning of walls and building models between towers and castle
+	# - 'evil mode' game state transition, general colour management and filtering shaders
+	# - game menu, splash screen, and loading screens
+	# - fill out assets:
+		# -> enemies
+		# -> allies
+		# -> buildings
+		# -> music
+		# -> sfx
+		# -> fx/animations/effect shaders
+		# -> set dressing / props
+		# -> card art
+	# - distribution build
 
 class UI():
 	def __init__(self):
@@ -250,6 +269,12 @@ class UI():
 	# 	# TODO : BROKEN : THIS RECEIVES THE WORLD POSITION, BUT IT NEEDS THE SCREEN POSITION
 	# 	cdNP.setPos(pos)
 
+class DialogueState():
+	def __init__(self, step, seqs):
+		assert isinstance(seqs, Sequence), f'Dialogue state not passed list at construction as required!'
+		self.stateSequence = seqs
+		self.step = step
+
 class GamestateFSM(FSM):
 	def __init__(self): 
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
@@ -264,6 +289,10 @@ class GamestateFSM(FSM):
 		# empty object to be filled with ui
 		self.ui = None
 
+		# setup dialogue
+		self.inDialogue = False
+		self.clickWaiting = False
+
 		#self.choosingTile = False
 		# spawn waves 								TODO - figure out spawning from both sides
 		#													without incrementing waveNum twice:
@@ -271,16 +300,16 @@ class GamestateFSM(FSM):
 			self.waveSchedule = Sequence(
 				Wait(5.0),
 				Func(base.spawnEnemyWave, 1, self.spawner[1]),
-				Wait(2.0),
+				Wait(4.0),
 				Func(base.spawnEnemyWave, 1, self.spawner[2]),
-				Wait(2.0),
+				Wait(6.0),
 				Func(base.spawnEnemyWave, 1, self.spawner[3]),
-				Wait(2.0),
-				Func(base.spawnEnemyWave, 1, self.spawner[4]),
-				Wait(2.0),
+				Wait(4.0),
+				Func(base.spawnEnemyWave, 5, self.spawner[4]),
+				Wait(6.0),
 				Func(base.spawnEnemyWave, 10, self.spawner[1]),
-				Func(base.spawnEnemyWave, 10, self.spawner[3]),
-				Wait(2.0),
+				#Func(base.spawnEnemyWave, 10, self.spawner[3]),
+				Wait(10.0),
 				Func(base.spawnEnemyWave, 10, self.spawner[2]),
 				Func(base.spawnEnemyWave, 10, self.spawner[4]),
 			)
@@ -299,6 +328,8 @@ class GamestateFSM(FSM):
 			)	
 		self.waveSchedule.start()
 
+	# main Gameplay state	
+
 	def enterGameplay(self):
 		# resume sequences 
 		self.waveSchedule.resume()
@@ -312,6 +343,8 @@ class GamestateFSM(FSM):
 		self.ui.pauseButton.show()
 		self.ui.playButton.hide()
 		self.ui.exitButton.hide()
+
+	# Pause menu
 
 	def enterPause(self):
 		# pause sequences
@@ -342,6 +375,8 @@ class GamestateFSM(FSM):
 		#	enemy.moveSeq.resume()
 		#pass
 
+	# Card Menu
+
 	def enterCardMenu(self):
 		# pause sequences
 		self.waveSchedule.pause()
@@ -367,6 +402,8 @@ class GamestateFSM(FSM):
 		self.ui.exitButton.hide()
 		# n.b. what to do if leaving card menu while paused?
 
+	# Pick Tower
+
 	def enterPickTower(self): 
 		# enable toggle to tell updates to listen for clicks and run mouseray collider
 		# maybe start a task for the tower picker?
@@ -375,6 +412,8 @@ class GamestateFSM(FSM):
 	def exitPickTower(self):
 		#self.choosingTile = False
 		pass
+
+	# Game Over
 
 	def enterGameOver(self):
 		# pause sequences
@@ -388,41 +427,118 @@ class GamestateFSM(FSM):
 		# reset the game
 		pass
 
+	# Dialogue
+
+	def enterDialogue(self):
+		# pause sequences
+		self.waveSchedule.pause()
+		if (base.spawnSeq != None):
+			base.spawnSeq.pause()
+		for enemy in base.enemies:
+			enemy.moveSeq.pause()
+		for tower in base.towers:
+			tower.scanSeq.pause()
+
+		#TODO: DON'T ENTER DIALOGUE UNLESS THE CORRECT DIALOGUE HAS BEEN LOADED!
+		# 		It needs to progress through the game linearly, and not get stuck in this state
+
+		# generate a black fade from the bottom of the screen for the character background
+		base.textCardMaker.setFrameFullscreenQuad()
+		self.fadeBoxBack = render2d.attachNewNode(base.textCardMaker.generate())
+		self.fadeBoxBack.setTransparency(1)
+		fadeShader = Shader.load(Shader.SL_GLSL,
+					 vertex="default.vert",
+                     fragment="darkFade.frag")
+		self.fadeBoxBack.setShader(fadeShader)
+		self.fadeBoxBack.setShaderInput(ShaderInput('range',0.8))
+
+		# display the sprite of the character addressing the player
+		base.textCardMaker.setFrame(-0.1,1.,-1.,0.65)
+		self.characterSprite = render2d.attachNewNode(base.textCardMaker.generate())
+		self.characterSprite.setTransparency(1)
+		self.characterSprite.setTexture(loader.loadTexture("assets/theDuke-sprite_ready.png"))
+
+		# generate a black fade from the bottom of the screen for the text background
+		base.textCardMaker.setFrameFullscreenQuad()
+		self.fadeBoxFront = render2d.attachNewNode(base.textCardMaker.generate())
+		self.fadeBoxFront.setTransparency(1)
+		fadeShader = Shader.load(Shader.SL_GLSL,
+					 vertex="default.vert",
+                     fragment="darkFade.frag")
+		self.fadeBoxFront.setShader(fadeShader)
+		self.fadeBoxFront.setShaderInput(ShaderInput('range',1.4))
+
+		self.inDialogue = True
+		self.dialogueStep = 0
+		
+		self.dialogueTextNP = base.drawText(base.dialogue[self.dialogueStep])
+		#wait for user to click
+		self.clickWaiting = True
+
+	def exitDialogue(self):
+		# remove the dialogue box
+		self.dialogueTextNP.removeNode()
+		self.fadeBoxBack.removeNode()
+		self.characterSprite.removeNode()
+		self.fadeBoxFront.removeNode()
+
+		self.inDialogue = False
+		self.clickWaiting = False
+
+	def setClickWaitingFalse(self):
+		self.clickWaiting = False
+
+	def stepDialogue(self):
+		self.dialogueTextNP.node().setText(base.dialogue[self.dialogueStep])
+
 class DuckOfCards(ShowBase):
 	def __init__(self):
 		ShowBase.__init__(self)
 
 		# disable default panda3d mouse camera controls
 		base.disableMouse()
-		render.setShaderAuto()
+		#render.setShaderAuto()
 
-		# Make dark background 
+		# Make background 
 		#self.set_background_color(0.42,0.65,1.,1.)
 		self.set_background_color(0.5,0.6,0.85,1.)
 
 		# create sunlight
-		self.dirLight = DirectionalLight('dirLight')
-		self.dirLight.setColorTemperature(6000)
-		self.dirLight.setShadowCaster(True, 512, 512)
-		#self.dirLight.setAttenuation(1,0,1)
-		self.dirLightNp = render.attachNewNode(self.dirLight)
-		self.dirLightNp.setHpr(-70,-40,20)
-		render.setLight(self.dirLightNp)
+		# self.dirLight = DirectionalLight('dirLight')
+		# self.dirLight.setColorTemperature(6000)
+		# self.dirLight.setShadowCaster(True, 512, 512)
+		# #self.dirLight.setAttenuation(1,0,1)
+		# self.dirLightNp = render.attachNewNode(self.dirLight)
+		# self.dirLightNp.setHpr(-70,-40,20)
+		# render.setLight(self.dirLightNp)
 
 		# initialise the camera - isometric angle (35.264deg)
-		self.cam.setPos(0.,-5.,3.)
-		self.cam.setHpr(0,-35.264,0)
-		#self.cam.setHpr(-45,-26.565,0) # dimetric angle - 26.565deg for square pixels
-		self.cam.setPos(self.cam, self.cam.getPos() + Vec3(0.,-12.,-4.))
+		self.camera.setPos(0.,-10.,7.5) 
+		self.camera.setHpr(0,-35.264,0)
+		#self.camera.setHpr(-45,-26.565,0) # dimetric angle - 26.565deg for square pixels
+
 		# orthographic lens to commit to isometric view
 		#self.lens = OrthographicLens()
 		#self.lens.setFilmSize(12, 8)  						# <--- update according to resolution
 		#self.lens.setNearFar(-40,40)
-		#self.cam.node().setLens(self.lens)
+		#self.camera.node().setLens(self.lens)
 
 		self.createMap(40,40)
 
-		#self.tileModel.ls()
+		#self.tileMap.ls()
+
+		# n.b. this is part of the opening cutscene as a placeholder for the final dialogue data
+		self.dialogue = ["QUACK! I mean QUICK! Attackers are at the gates!\nThere's no time to explain- you, traveller!",
+							"> ...", "Yes, you! What's your name?", 
+							"Wait- there's no TIME! Take this;\nit is one of my fine and valuable magic cards.",
+							"It will summon a magical tower to defend\nthe innocent ducks of the pond\nwherever you place it.",
+							"Place it carefully and fight back these\nmerciless attackers who would make\nMINCEMEAT of us!",
+							"What are you waiting for?!\nBEGONE! BWAAACK- WACK wack..."]
+		self.dialogueStates = [DialogueState(3,Sequence(Func(self.offerCard))),
+								DialogueState(4,Sequence(Func(self.takeOfferedCard)))]
+		self.textCardMaker = CardMaker('textScreen')
+		self.textCardMaker.setHasUvs(1)
+		self.textCardMaker.clearColor()
 
 		# generate path textures and apply to tiles
 		self.pathTex = loader.loadTexture("assets/road-tile.png")
@@ -433,14 +549,14 @@ class DuckOfCards(ShowBase):
 		self.placePaths()
 
 		# initialise the tile picker
-		self.tPickerRay = CollisionRay()
 		self.tilePicker = CollisionTraverser()
 		self.tpQueue = CollisionHandlerQueue()
-		tpNode = CollisionNode('tp-node')
-		tpNode.setFromCollideMask(BitMask32(0x01))
-		tpNp = self.cam.attachNewNode(tpNode)
-		tpNode.addSolid(self.tPickerRay)
-		self.tilePicker.addCollider(tpNp, self.tpQueue)
+		tilePickerNode = CollisionNode('tilePicker-node')
+		tilePickerNP = camera.attachNewNode(tilePickerNode)
+		tilePickerNode.setFromCollideMask(BitMask32(0x01))
+		self.tilePickerRay = CollisionRay()
+		tilePickerNode.addSolid(self.tilePickerRay)
+		self.tilePicker.addCollider(tilePickerNP, self.tpQueue)
 		self.hitTile = None
 		# UNCOMMENT FOR DEBUG 
 		#self.tilePicker.showCollisions(render)
@@ -465,13 +581,15 @@ class DuckOfCards(ShowBase):
 		self.enemyCount = 0
 		self.enemies = []
 		self.spawnSeq = None
-		#self.enemyModelNd = self.render.attachNewNode("enemy-models")
+		self.enemyModelNd = render.attachNewNode("enemy-models")
 		#self.enemyModel.reparentTo(render)
 		#print(self.enemyModel.findAllMaterials())
 
 		# load a random duck as a placeholder for civilian ducks
 		#self.duckNp = self.render.attachNewNode("duck_models")
-		self.randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(-2.,-2.,2.), 1.)
+		# temporary integer ticker to rotate the random duck
+		self.t = 0
+		randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(-2.,-2.,2.), .5)
 
 		#self.sphere = self.loader.loadModel("smiley")
 		#self.sphere.setPos(0,0,3)
@@ -498,12 +616,15 @@ class DuckOfCards(ShowBase):
 		self.taskMgr.add(self.towerPlaceTask, 'towerPlaceTask', taskChain='default')
 		self.taskMgr.add(self.update, "update", taskChain='default')
 
-		self.fsm.demand('Gameplay')
+		if not testing:
+			self.fsm.demand('Dialogue')
+		else:
+			self.fsm.demand('Gameplay')
 
 	# LOAD-IN
 	def createMap(self, width, length): 	# generate pickable tiles to place towers on
 		# generate ground tile model and instance, creating node map
-		self.tileMap = self.render.attachNewNode("tileMap")
+		self.tileMap = render.attachNewNode("tileMap")
 		# self.tileModel = self.loader.loadModel("assets/groundTile.egg")
 		# self.lakeTiles = self.render.attachNewNode("lakeTiles")
 		# self.lakeTileModel = self.loader.loadModel("assets/lakeTile.egg")
@@ -518,12 +639,12 @@ class DuckOfCards(ShowBase):
 		pondSpawnPoint = [randint(2,int(width)-2), randint(2,int(length)-2)]
 		print("pond spawn generation: " + str(pondSpawnPoint))
 
-		self.card_maker = CardMaker('tile')
-		#card_maker.setColor(1.,1.,1.,1.)
+		self.tile_maker = CardMaker('tile-')
+		#tile_maker.setColor(1.,1.,1.,1.)
 		self.tileScaleFactor = sqrt(2) # pythagoras; turning squares sideways makes triangles maybe?
-		self.card_maker.setFrame(0.,self.tileScaleFactor,0.,self.tileScaleFactor)
-		self.card_maker.setHasUvs(1)
-		self.card_maker.clearColor()
+		self.tile_maker.setFrame(0.,self.tileScaleFactor,0.,self.tileScaleFactor)
+		self.tile_maker.setHasUvs(1)
+		self.tile_maker.clearColor()
 
 		self.groundTex = loader.loadTexture("../duck-of-cards/assets/ground-tile_4.png")
 		self.groundTex.setWrapU(Texture.WM_clamp)
@@ -553,7 +674,8 @@ class DuckOfCards(ShowBase):
 				# 	rather than modelling freeform user selections (!!)
 				# The pond generation will happen in a shader
 				tileIndex += 1
-				tile = self.tileMap.attachNewNode(self.card_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
+				tile = self.tileMap.attachNewNode(self.tile_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
+				tile.setName("tile-"+str(tileIndex))
 				tile.setPos(x-y,x+y-length,0.)
 				tile.setHpr(0., -90., 45.)
 				tile.setTransparency(1)
@@ -567,10 +689,10 @@ class DuckOfCards(ShowBase):
 				#colliderNp.show()
 				if (x==pondSpawnPoint[0] and y==pondSpawnPoint[1]):
 					tile.setTexture(self.tileTS, self.pondTex)
-					tileColl.setTag("TILEpond",str(tileIndex))
+					tile.setTag("TILEpond-"+str(tileIndex),str(tileIndex))
 				else: 						# place a regular grass tile
 					tile.setTexture(self.tileTS, self.groundTex)
-					tileColl.setTag("TILEground",str(tileIndex))
+					tile.setTag("TILEground-"+str(tileIndex),str(tileIndex))
 				
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
@@ -584,7 +706,7 @@ class DuckOfCards(ShowBase):
 				#tile.setTexScale(self.pathTS, 1.1,1.1,1)
 				tile.setTexPos(self.pathTS, -.1, .1, 0.)
 			if (tile.getY() == 0 and tile.getX() != 0):
-				tile.setTexture(self.pathTS, self.pathTex, 3)
+				tile.setTexture(self.pathTS, self.pathTex)
 		# apply decal
 
 	# TASK FUNCTIONS
@@ -598,14 +720,17 @@ class DuckOfCards(ShowBase):
 
 		self.ui.update()
 
-		return task.cont
+		return Task.cont
 
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; place tower and exit tile picker state
 			# todo: sequence for animating tower placement - clunk
+			print("ONMOUSE HIT " + str(self.hitTile))
 			self.spawnTower(self.hitTile.getPos() + Vec3(0.,0,1.))
 			self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
+			self.hitTile.set_color(1,0,0,1)
+			self.hitTile = None
 			#self.hitTile.setColor(1.,1.,1.,1.)
 			#self.hitTile.findTexture(self.tileTS).load(self.groundPNM)
 			self.fsm.demand('Gameplay')
@@ -630,6 +755,25 @@ class DuckOfCards(ShowBase):
 			print(mousePos)
 			if ((mousePos[0] > 1.2 or mousePos[0] < -1.2) or (mousePos[1] > 0.8 or mousePos[1] < -0.8)):
 				self.fsm.demand('Gameplay')
+		elif (self.fsm.state == 'Dialogue'):
+			# in dialogue, we check if we're waiting for a click
+			if (self.fsm.clickWaiting):
+				# we then step forward the dialogue counter
+				self.fsm.dialogueStep += 1
+				# and check if the dialogue is at the end of the array (completed)
+				if (self.fsm.dialogueStep < len(self.dialogue)): 
+					# procede to next step of dialogue 
+					self.fsm.stepDialogue()
+					for ds in self.dialogueStates:
+						if (self.fsm.dialogueStep == ds.step):
+							# execute functions (stored in Sequence) for current step
+							ds.stateSequence.start()
+							break
+					Wait(2) # avoid accidentally skipping dialogue
+				else:
+					# exit dialogue if we reach the end of the array
+					self.fsm.demand('Gameplay')
+					self.fsm.setClickWaitingFalse()
 
 	def giveGold(self, amount):
 		global playerGold
@@ -638,24 +782,22 @@ class DuckOfCards(ShowBase):
 
 	# camera movement function (step around by blocks of 1x1)
 	def move(self, direction):
-		assert self.cam.getPos() != None, f"base.cam doesn't return a position when queried"
+		assert self.camera.getPos() != None, f"base.camera doesn't return a position when queried"
 		if direction == 'left':
-			self.cam.setPos(self.cam.getPos() + Vec3(-1,0,0))
+			self.camera.setPos(self.camera.getPos() + Vec3(-1,0,0))
 		elif direction == 'right':
-			self.cam.setPos(self.cam.getPos() + Vec3(1,0,0))
+			self.camera.setPos(self.camera.getPos() + Vec3(1,0,0))
 		elif direction == 'fwd':
-			self.cam.setPos(self.cam.getPos() + Vec3(0,1,0))
+			self.camera.setPos(self.camera.getPos() + Vec3(0,1,0))
 		elif direction == 'back':
-			self.cam.setPos(self.cam.getPos() + Vec3(0,-1,0))
+			self.camera.setPos(self.camera.getPos() + Vec3(0,-1,0))
 		elif direction == 'zoomIn':
-			self.cam.setScale(self.cam.getScale()*0.8)
+			self.camera.setScale(self.camera.getScale()*0.8)
 		elif direction == 'zoomOut':
-			self.cam.setScale(self.cam.getScale()*1.2)
+			self.camera.setScale(self.camera.getScale()*1.2)
 
 	# ray-based tile picker for placing down towers
 	def towerPlaceTask(self, task):
-		#self.fsm.demand('PickTower')
-
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
 			if self.hitTile != None: 			# clear highlighting on non-hovered tiles
 				for tile in self.tileMap.getChildren():
@@ -664,12 +806,12 @@ class DuckOfCards(ShowBase):
 						tile.setTexture(self.tileTS, self.groundTex, 1)
 					#tile.setColor(1.,1.,1.,1.)
 					#print(tile.ls())
-				self.hitTile = None
+				#self.hitTile = None
 
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 				# get mouse position and traverse tileMap with the pickerRay
-				mousePos = self.mouseWatcherNode.getMouse()
-				self.tPickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
+				mousePos = base.mouseWatcherNode.getMouse()
+				self.tilePickerRay.setFromLens(base.camNode, mousePos.x, mousePos.y)
 				self.tilePicker.traverse(self.tileMap)
 
 				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
@@ -678,7 +820,7 @@ class DuckOfCards(ShowBase):
 					# # find tile node and get tile index
 					tileColl = self.tpQueue.getEntry(0).getIntoNodePath()
 					#self.hitTile = tileColl.getNode(1)
-					#print(tileColl)
+					print(tileColl)
 					if (tileColl.getTag("TILEground") != ""):
 						# highlight on mouseover
 						tileInd = int(tileColl.getTag("TILEground"))
@@ -694,7 +836,7 @@ class DuckOfCards(ShowBase):
 					#self.hitTile.findTexture(self.tileTS).load(self.tileHighlight)
 					#print(tileInd)
 
-		return task.cont
+		return Task.cont
 	
 	def spawnEnemy(self, pos, facing): 				# spawn an individual creep
 		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, facing, 1.)
@@ -707,10 +849,10 @@ class DuckOfCards(ShowBase):
 
 		print("Spawning wave " + str(waveNum))
 		self.spawnSeq = Sequence() 
-		if pos == self.fsm.spawner[1]: facing = 'Yneg'
-		elif pos == self.fsm.spawner[2]: facing = 'Xneg'
-		elif pos == self.fsm.spawner[3]: facing = 'Y'
-		elif pos == self.fsm.spawner[4]: facing = 'X'
+		if pos == self.fsm.spawner[1]: facing = 'BottomLeft'
+		elif pos == self.fsm.spawner[2]: facing = 'BottomRight'
+		elif pos == self.fsm.spawner[3]: facing = 'TopRight'
+		elif pos == self.fsm.spawner[4]: facing = 'TopLeft'
 		else: raise ValueError('Enemies spawning in an unapproved location [base.spawnEnemyWave]')
 		for _ in range(num):
 			self.spawnSeq.append(Func(self.spawnEnemy,pos,facing))
@@ -729,7 +871,7 @@ class DuckOfCards(ShowBase):
 		newTower = Buildings.Tower(pos)
 		# add to list to allow pausing of sequences
 		self.towers.append(newTower)
-		return 0
+		return newTower
 
 	def buyTower(self):
 		global playerGold
@@ -737,9 +879,24 @@ class DuckOfCards(ShowBase):
 			playerGold -= 10
 			self.fsm.demand('PickTower')
 		else:
-			# show "can't afford" splash
-			print("broke bitch")
+			# TODO: show hoverover tip that you can't afford this card
+			self.popupText("broke bitch",2)
 			pass
+
+	def offerCard(self):
+		#self.fsm.setClickWaitingFalse()
+		newTowerCM = CardMaker('newTowerCard')
+		newTowerCM.setFrame(-0.5,0.,-0.605,0.)
+		self.newTowerCard = aspect2d.attachNewNode(newTowerCM.generate())
+		self.newTowerCard.setPos(-0.2,0.,0.5)
+		self.newTowerCard.setScale(1.4)
+		#self.newTowerCard.reparentTo(aspect2d)
+		newTowerCTex = loader.loadTexture('assets/card-buildTower.png')
+		self.newTowerCard.setTexture(newTowerCTex)
+
+	def takeOfferedCard(self):
+		# TODO: add a sexy, sparkly animation for taking the card
+		self.newTowerCard.removeNode()
 
 	def startGame(self): 	# remove all towers, enemies etc and prepare the game start-state
 		global waveNum, playerGold, castleHP
@@ -752,6 +909,51 @@ class DuckOfCards(ShowBase):
 		global castleHP
 		if testing: print("Castle taking " + str(dmg) + " damage!")
 		castleHP -= dmg
+
+	def drawText(self, dialogueString):
+		# generate text
+		dialogueText = TextNode('dialogueText')
+		# dialogueText.setFont(TextFont)
+		dialogueText.setText(dialogueString)
+		# probably need to use dialogueText.calcWidth(string) or dialogueText.setWordwrap(float) for varying text output
+		# dialogueText.setSlant(float) needed for Traveller dialogue
+		# use dialogueText.setGlyphScale(float) and dialogueText.setGlyphShift(float) for wobbly, missized text
+		dialogueText.setTextColor(1.,1.,1.,1.) # n.b. should change for different characters
+		dialogueText.setShadow(0.1, 0.1)
+		dialogueText.setShadowColor(0,0,0,0.6)
+		dialogueText.setCardColor(0.1,0.1,0.1,0.2)
+		# note that method dialogueText.setCardTexture(texture) exists
+		dialogueText.setCardAsMargin(0.5,0.5,0.5,0.1)
+		dialogueText.setCardDecal(True)
+		dialogueText.setFrameCorners(True)
+		dialogueTextNP = aspect2d.attachNewNode(dialogueText)
+		dialogueTextNP.setScale(0.1)
+		dialogueTextNP.setPos(-1.4,0.,-0.6)
+
+		return dialogueTextNP
+
+	def popupText(self, textString, duration):
+		# generate text
+		popupText = TextNode('popupText-'+str(duration)+'s')
+		# popupText.setFont(TextFont)
+		popupText.setText(textString)
+		# probably need to use dialogueText.calcWidth(string) or dialogueText.setWordwrap(float) for varying text output
+		# dialogueText.setSlant(float) needed for Traveller dialogue
+		# use dialogueText.setGlyphScale(float) and dialogueText.setGlyphShift(float) for wobbly, missized text
+		popupText.setTextColor(1.,1.,1.,1.) # n.b. should change for different characters
+		popupText.setShadow(0.1, 0.1)
+		popupText.setShadowColor(0,0,0,0.6)
+		popupText.setCardColor(0.1,0.1,0.1,0.2)
+		# note that method popupText.setCardTexture(texture) exists
+		popupText.setCardAsMargin(0.5,0.5,0.5,0.1)
+		popupText.setCardDecal(True)
+		popupText.setFrameCorners(True)
+		popupTextNP = aspect2d.attachNewNode(popupText)
+		popupTextNP.setScale(0.1)
+		popupTextNP.setPos(-1.4,0.,-0.6)
+		Sequence(Wait(duration),popupTextNP.colorScaleInterval(1,(1.,1.,1.,0.)),Func(popupTextNP.removeNode)).start()
+
+		return popupTextNP
 
 	def quit(self): 		# exit the game in a reasonable fashion
 		self.fsm.cleanup()

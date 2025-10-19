@@ -1,0 +1,14 @@
+[project]
+name = "Duck-of-Cards"
+description = "Defend the duck pond!"
+readme = "README.md"
+version = "0.0.1"
+requires-python = ">=3.13"
+dependencies = [
+    "panda3d>=1.10.15",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]

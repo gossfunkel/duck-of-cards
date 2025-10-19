@@ -1,6 +1,6 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.5.47",
+		"generator":"Khronos glTF Blender I/O v4.5.48",
 		"version":"2.0"
 	},
 	"extensionsUsed":[
@@ -49,10 +49,10 @@
 	"materials":[
 		{
 			"alphaMode":"BLEND",
-			"doubleSided":true,
 			"extensions":{
 				"KHR_materials_clearcoat":{
-					"clearcoatFactor":0.019999999552965164
+					"clearcoatFactor":0.20000000298023224,
+					"clearcoatRoughnessFactor":0.10000000149011612
 				},
 				"KHR_materials_specular":{
 					"specularFactor":0.2747252583503723
@@ -64,6 +64,9 @@
 						1.0
 					],
 					"sheenRoughnessFactor":0.5
+				},
+				"KHR_materials_ior":{
+					"ior":1.1999999284744263
 				}
 			},
 			"name":"duckrear",
@@ -71,16 +74,16 @@
 				"baseColorTexture":{
 					"index":0
 				},
-				"metallicFactor":0.15000000596046448,
-				"roughnessFactor":0.0989999994635582
+				"metallicFactor":0,
+				"roughnessFactor":0.75
 			}
 		},
 		{
 			"alphaMode":"BLEND",
-			"doubleSided":true,
 			"extensions":{
 				"KHR_materials_clearcoat":{
-					"clearcoatFactor":0.20000000298023224
+					"clearcoatFactor":0.20000000298023224,
+					"clearcoatRoughnessFactor":0.10000000149011612
 				},
 				"KHR_materials_specular":{
 					"specularFactor":0.2747252583503723
@@ -102,8 +105,8 @@
 				"baseColorTexture":{
 					"index":1
 				},
-				"metallicFactor":0.18000000715255737,
-				"roughnessFactor":0.09890110045671463
+				"metallicFactor":0,
+				"roughnessFactor":0.75
 			}
 		}
 	],
@@ -152,13 +155,13 @@
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"duck1-back.png",
-			"uri":"duck1-back.png"
+			"name":"duck1-back",
+			"uri":"tex/duck1-back.png"
 		},
 		{
 			"mimeType":"image/png",
 			"name":"duck1-front.png",
-			"uri":"duck1-front.png"
+			"uri":"tex/duck1-front.png.png"
 		}
 	],
 	"accessors":[

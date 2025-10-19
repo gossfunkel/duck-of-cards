@@ -1,6 +1,6 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.5.47",
+		"generator":"Khronos glTF Blender I/O v4.5.48",
 		"version":"2.0"
 	},
 	"extensionsUsed":[
@@ -74,7 +74,7 @@
 				"baseColorTexture":{
 					"index":0
 				},
-				"metallicFactor":0.10000000149011612,
+				"metallicFactor":0,
 				"roughnessFactor":0.8999999761581421
 			}
 		},
@@ -105,7 +105,7 @@
 				"baseColorTexture":{
 					"index":1
 				},
-				"metallicFactor":0.10000000149011612,
+				"metallicFactor":0,
 				"roughnessFactor":0.8194863796234131
 			}
 		}
@@ -148,7 +148,7 @@
 			"source":0
 		},
 		{
-			"sampler":1,
+			"sampler":0,
 			"source":1
 		}
 	],
@@ -297,10 +297,6 @@
 		}
 	],
 	"samplers":[
-		{
-			"magFilter":9729,
-			"minFilter":9987
-		},
 		{
 			"magFilter":9729,
 			"minFilter":9987,

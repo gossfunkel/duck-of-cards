@@ -1,92 +1,99 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import NodePath, BitMask32, Vec3, CollisionCapsule, CollisionNode, TransformState, LMatrix4
 from panda3d.core import TransformState, TextureStage, VBase3
+from direct.task import Task
 from direct.interval.IntervalGlobal import *
 from direct.fsm.FSM import FSM
+from math import floor
 
 class SpriteMod(FSM):
 	def __init__(self, name, pos, speed):
+		# TODO this can be cleaned up using the defaultFilter(self, request, args) method 
+		# 	and a lookup table {('TopRight','Right'):'BottomRight',('TopRight','Left'):'TopLeft'} etc
+
 		FSM.__init__(self, (str(name) + 'FSM')) # must be called when overloading
 
-		self.pos = pos
+		#self.pos = pos
 		self.speed = speed
+		#self.period = 90. / speed
 
-		#self.mirrorMat = TransformState.makeMat(LMatrix4(1,-1,1))
-		#self.mirrorTS = TransformState.makeScale(VBase3(0, -1, 0))
+		self.node.setH(45)
 
-		self.xNode = Vec3(self.node.getX()+5, self.node.getY(), self.node.getZ())
-		self.yNode = Vec3(self.node.getX(), self.node.getY()+5,self.node.getZ())
-		self.xNegNode = Vec3(self.node.getX()-5, self.node.getY(),self.node.getZ())
-		self.yNegNode = Vec3(self.node.getX(), self.node.getY()-5,self.node.getZ())
+	def defaultFilter(self, request, args):
+		return 'BottomLeft'
 
-	def enterX(self):
+	def enterTopLeft(self):
 		# TODO lerp round
 		#print(self.node.getX(), self.node.getY(), self.node.getZ())
-		print(str(self.node) + " facing X")
-		self.node.lookAt(self.xNode)
+		print(str(self.node) + " facing top left")
+		#self.node.lookAt(self.tlNode)
+		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
 
-	#def exitX(self):
+	#def exitTopLeft(self):
 	#	#self.node.setTexTransform(TextureStage.getDefault(), self.mirrorTS)
 
-	def filterX(self, request, args): # process input while facing +x
+	def filterTopLeft(self, request, args): # process input while facing the top left (-x,+y)
 		if (request == 'Left'):
-			return 'Y'
+			return 'BottomLeft'
 		elif (request == 'Right'):
-			return 'Yneg'
+			return 'TopRight'
 		elif (request == 'Flip'):
-			return 'Xneg'
+			return 'BottomRight'
 		else:
 			return None
 
-	def enterY(self):
+	def enterTopRight(self):
 		# TODO lerp round
-		print(str(self.node) + " facing Y")
-		self.node.lookAt(self.yNode)
+		print(str(self.node) + " facing top right")
+		#self.node.lookAt(self.trNode)
+		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
 		#self.nodepath.set_tex_scale(TextureStage.getDefault(), float(self.nodepath.get_tex_scale(TextureStage.getDefault())[0]*-1),float(self.nodepath.get_tex_scale(TextureStage.getDefault())[1])) #,self.nodepath.get_scale()[2])
 		#self.node.setTexTransform(TextureStage.getDefault(), self.mirrorTS)
 		#self.node.setTexHpr(TextureStage.getDefault(), 0,180,0)
 		#self.node.setTexRotate(self.node.findAllTextureStages()[0], 180)
 
-	#def exitY(self):
+	#def exitTopRight(self):
 	#	self.nodepath.set_tex_scale(TextureStage.getDefault(), float(self.nodepath.get_tex_scale(TextureStage.getDefault())[0]*-1),float(self.nodepath.get_tex_scale(TextureStage.getDefault())[1])) #,self.nodepath.get_scale()[2])	
 	#	#self.node.setTexTransform(TextureStage.getDefault(), self.mirrorTS)
 	#	#self.node.setTexHpr(TextureStage.getDefault(), 0,0,0)
 
-	def filterY(self, request, args): # process input while facing +x
+	def filterTopRight(self, request, args): # process input while facing top right (+x,+y)
 		if (request == 'Left'):
-			return 'Xneg'
+			return 'TopLeft'
 		elif (request == 'Right'):
-			return 'X'
+			return 'BottomRight'
 		elif (request == 'Flip'):
-			return 'Yneg'
+			return 'BottomLeft'
 		else:
 			return None
 
-	def enterXneg(self):
+	def enterBottomRight(self):
 		# TODO lerp round
-		print(str(self.node) + " facing Xneg")
+		print(str(self.node) + " facing bottom right")
 		#self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
 		#self.nodepath.set_tex_scale(TextureStage.getDefault(), float(self.nodepath.get_tex_scale(TextureStage.getDefault())[0]*-1),float(self.nodepath.get_tex_scale(TextureStage.getDefault())[1])) #,self.nodepath.get_scale()[2])
-		self.node.lookAt(self.xNegNode)
+		#self.node.lookAt(self.brNode)
+		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
 
 	#def exitXneg(self):	
 	#	self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
 	#	#self.nodepath.set_tex_scale(TextureStage.getDefault(), float(self.nodepath.get_tex_scale(TextureStage.getDefault())[0]*-1),float(self.nodepath.get_tex_scale(TextureStage.getDefault())[1])) #,self.nodepath.get_scale()[2])
 		
-	def filterXneg(self, request, args): # process input while facing +x
+	def filterBottomRight(self, request, args): # process input while facing bottom right (+x,-y)
 		if (request == 'Left'):
-			return 'Yneg'
+			return 'TopRight'
 		elif (request == 'Right'):
-			return 'Y'
+			return 'BottomLeft'
 		elif (request == 'Flip'):
-			return 'X'
+			return 'TopLeft'
 		else:
 			return None
 
-	def enterYneg(self):
+	def enterBottomLeft(self):
 		# TODO lerp round
-		print(str(self.node) + " facing Yneg")
-		self.node.lookAt(self.yNegNode)
+		print(str(self.node) + " facing bottom left")
+		#self.node.lookAt(self.blNode)
+		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
 		#self.nodepath.set_tex_scale(TextureStage.getDefault(), float(self.nodepath.get_tex_scale(TextureStage.getDefault())[0]*-1),float(self.nodepath.get_tex_scale(TextureStage.getDefault())[1])) #,self.nodepath.get_scale()[2])
 		#self.node.setTexTransform(TextureStage.getDefault(), self.mirrorTS)
 
@@ -95,56 +102,61 @@ class SpriteMod(FSM):
 	#	self.nodepath.set_scale(0.05,0.05,0.05)
 	#	#self.node.setTexTransform(TextureStage.getDefault(), self.mirrorTS)
 
-	def filterYneg(self, request, args): # process input while facing +x
+	def filterBottomLeft(self, request, args): # process input while facing bottom left (-x,+y)
 		if (request == 'Left'):
-			return 'X'
+			return 'BottomRight'
 		elif (request == 'Right'):
-			return 'Xneg'
+			return 'TopLeft'
 		elif (request == 'Flip'):
-			return 'Yneg'
+			return 'TopRight'
 		else:
 			return None
 
-class SpriteModSide(SpriteMod):
-	def enterX(self):
-		print(str(self.node) + " facing X (SpriteModSide)")
-		self.node.lookAt(self.xNode)
-		self.node.setH(90) # flip model to correct face
+# class SpriteModSide(SpriteMod):
+# 	def enterTopLeft(self):
+# 		print(str(self.node) + " facing top left (SpriteModSide)")
+# 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
+# 		#self.node.lookAt(self.tlNode)
+# 		#self.node.setH(90) # flip model to correct face
 
-	def exitX(self):
-		self.node.setH(0) # flip model to correct face
+# 	def exitTopLeft(self):
+# 		self.node.setH(0) # flip model to correct face
 
-	def enterY(self):
-		print(str(self.node) + " facing Y (SpriteModSide)")
-		self.node.lookAt(self.yNode)
-		#self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
-		self.node.setH(180) # flip model to correct face
+# 	def enterTopRight(self):
+# 		print(str(self.node) + " facing top right (SpriteModSide)")
+# 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
+# 		self.node.lookAt(self.trNode)
+# 		#self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
+# 		self.node.setH(180) # flip model to correct face
 
-	def exitY(self):
-		#self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
-		self.node.setH(0) # flip model to correct face
+# 	def exitTopRight(self):
+# 		#self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
+# 		self.node.setH(0) # flip model to correct face
 
-	def enterXneg(self):
-		print(str(self.node) + " facing Xneg (SpriteModSide)")
-		self.node.lookAt(self.xNegNode)
-		self.node.setH(-90) # flip model to correct face
+# 	def enterBottomRight(self):
+# 		print(str(self.node) + " facing Xneg (SpriteModSide)")
+# 		self.node.lookAt(self.brNode)
+# 		self.node.setH(-90) # flip model to correct face
 
-	def exitXneg(self):
-		self.node.setH(0) # flip model to correct face
+# 	def exitBottomRight(self):
+# 		self.node.setH(0) # flip model to correct face
 
-class Enemy(SpriteModSide):
+class Enemy(SpriteMod):
 	def __init__(self, name, pos, facing, speed):
 		assert pos != None, f'Enemy spawning with no position!'
 
 		self.model = base.loader.loadModel("assets/dogboard1.gltf")
-		self.model.setH(90)
+		self.model.setP(90)
 		self.model.setScale(0.1)
 		#self.model.setPos(0.,0.,.8)
-		self.node = render.attachNewNode("enemy-" + str(name))
+		self.node = base.enemyModelNd.attachNewNode("enemy-" + str(name))
+		self.model.reparent_to(self.node)
 		self.node.setPos(pos + Vec3(0.,0.,.8))
+		self.node.setP(90)
+		#self.node.setScale(0.0001)
 		#self.nodepath = base.enemyModel.instanceTo(self.node)
 		super().__init__(str(name), pos, speed)
-		assert (facing == 'X' or facing == 'Y' or facing == 'Xneg' or facing == 'Yneg'), f'Enemy given incorrect facing direction!'
+		assert (facing == 'TopLeft' or facing == 'TopRight' or facing == 'BottomLeft' or facing == 'BottomRight'), f'Enemy generated with incorrect direction to face!'
 		print(str(name) + " spawning")
 
 		#self.node.setColor(1.,0.5,0.5,1.)
@@ -154,7 +166,7 @@ class Enemy(SpriteModSide):
 		assert (self.node.getPos()[0] != 0 or self.node.getPos()[1] != 0), f'Enemy spawning at 0,0!'
 		#self.node.setH(-30)
 		# modified target vector to prevent enemies flying into air or sinking into ground as they approach castle
-		self.targetPos = base.castle.model.getPos() - Vec3(0.,0.,.5)
+		self.targetPos = base.castle.node.getPos() - Vec3(0.,0.,.5)
 
 		# define dying tag and set to False until enemy loses all HP
 		self.dying = False
@@ -209,9 +221,9 @@ class Enemy(SpriteModSide):
 
 		self.moveSeq.start()
 
-		base.taskMgr.add(self.update, "update-"+str(self.node), taskChain='default')
+		base.taskMgr.add(self.updateEnemy, "update_"+str(self.node), taskChain='default')
 
-	def update(self, task):
+	def updateEnemy(self, task):
 		if (self.hp <= 0.0): # die if health gets too low
 			#self.despawnDie()
 			return task.done
@@ -232,7 +244,8 @@ class Enemy(SpriteModSide):
 		self.dmgSeq.clearIntervals()
 		# remove update task from taskMgr
 		if (base.taskMgr.getTasksNamed(str(self.node)+"_update") != None):
-			base.taskMgr.remove(base.taskMgr.getTasksNamed(str(self.node)+"_update"))	
+			base.taskMgr.remove(base.taskMgr.getTasksNamed(str(self.node)+"_update"))
+		# clean up node
 		self.node.removeNode() 	
 
 	def despawnDie(self):
@@ -266,38 +279,33 @@ class Enemy(SpriteModSide):
 
 class NormalInnocentDuck(SpriteMod): 
 	def __init__(self, name, pos, speed):
-		self.model = base.loader.loadModel("assets/duckboard1.gltf")
-		self.model.setScale(0.05)
-		self.model.setH(-90)
+		self.model = loader.loadModel("assets/duckboard1.gltf")
+		self.model.setScale(0.5)
+		self.model.setP(90)
 		self.node = render.attachNewNode("duck-" + str(name))
+		self.model.reparent_to(self.node)
 		self.node.setPos(pos)
 		#self.nodepath = base.duckModel.instanceTo(self.node)
 		# self.nodepath.setR(90)
 		# self.nodepath.setH(90)
 		super().__init__(str(name), pos, speed)
 		#print("spawning a normal duck")
-		self.demand('Xneg')
+		#self.demand('BottomRight')
 		#self.speed = speed
 
 		self.hp = 1000000
 
-		# temporary integer ticker to rotate the random duck
-		self.t = 0
-
-
-		base.taskMgr.add(self.update, "update-"+str(self.node), taskChain='default')
+		base.taskMgr.add(self.updateDuck, "update-"+str(self.node), taskChain='default')
 	
-	def update(self, task):
+	def updateDuck(self, task):
 		if base.fsm.state == 'Gameplay':
-			self.t += int(1 * self.speed)
-		
-		# rotate the random duck
-		if ((self.t % 90) == 1):
-			#print("duck turning")
-			self.demand('Right')
-			#self.turnRight()
+			# rotate the random duck
+			if ((floor(task.time*100) % 90) == 1):
+				#print("duck turning")
+				self.request('Right')
+				#self.turnRight()
 
-		return task.cont
+		return Task.cont
 
 	#def turnRight(self):
 	#	self.demand('Right')

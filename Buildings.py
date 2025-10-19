@@ -5,37 +5,39 @@ from direct.interval.IntervalGlobal import *
 
 class PlayerCastle():
 	def __init__(self):
-		self.model = base.loader.loadModel("assets/playerBase.gltf")
+		model = loader.loadModel("assets/playerBase.gltf")
+		model.setScale(0.2)
 		self.node = render.attachNewNode("castleMap")
-		self.model.reparentTo(self.node)
-		self.model.setScale(0.2)
+		model.reparentTo(self.node)
 		self.node.setPos(0.,0.,0.)
-		self.node.setP(90)
-		self.model.setColor(0.3,0.35,0.6,1.)
-		self.model.setTag("castle", '1')
-		self.model.node().setIntoCollideMask(BitMask32(0x04))
+		self.node.setH(-45)
+		#self.model.setColor(0.3,0.35,0.6,1.)
+		self.node.setTag("castle", '1')
+		model.node().setIntoCollideMask(BitMask32(0x04))
+
+		#self.node.clear_material()
+		#for ts in self.node.find_all_texture_stages():
+		#	self.model.clear_texture(ts)
+		#self.node.ls()
 
 	def takeDmg(self):
 		# take damage
 		base.dmgCastle(5.0)
 		# flash red for a moment
-		Sequence(Func(self.model.setColor,1.2,0.1,0.1,1.),
+		Sequence(Func(self.node.setColor,1.2,0.1,0.1,1.),
 				Wait(0.1),
-				Func(self.model.setColor,0.3,0.35,0.6,1.)).start()
+				Func(self.node.setColor,0.3,0.35,0.6,1.)).start()
 
 class Arrow():
 	def __init__(self, pos, enemyId):
-<<<<<<< HEAD
 		self.arrowModel = base.loader.loadModel("assets/arrow2.gltf")
 		self.node = render.attachNewNode("arrow")
-		self.arrowModel.reparentTo(self.node)
+		self.arrowModel.wrtReparentTo(self.node)
 		self.arrowModel.setScale(0.06)
-=======
-		self.node = base.arrowModelNd.attachNewNode("arrow")
-		base.arrowModel.instanceTo(self.node)
+		#self.node = base.arrowModelNd.attachNewNode("arrow")
+		#base.arrowModel.instanceTo(self.node)
 		# TODO this is the wrong kind of instancing! Remove it:(
 		self.node.setScale(0.6)
->>>>>>> 38eab376c5c0e91543f7992dcfcb5b95b1bd8221
 		self.enemy = base.enemies[int(enemyId)]
 		self.damage = 10.0
 		self.node.setP(30)
@@ -78,11 +80,12 @@ class Arrow():
 class Tower():
 	def __init__(self, pos):
 		towerModel = base.loader.loadModel("assets/tower.gltf")
+		print("spawning tower at " + str(pos))
 		towerModel.setScale(0.2)
+		towerModel.setP(90)
 		self.node = render.attachNewNode("tower")
-		towerModel.reparentTo(self.node)
+		towerModel.wrtReparentTo(self.node)
 		self.node.setPos(pos)
-		self.node.setP(90)
 		#self.node.setScale()
 		self.rateOfFire = 1.0
 		self.damage = 1.0
