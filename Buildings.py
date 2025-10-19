@@ -5,15 +5,15 @@ from direct.interval.IntervalGlobal import *
 
 class PlayerCastle():
 	def __init__(self):
-		model = loader.loadModel("assets/playerBase.gltf")
+		model = loader.loadModel("assets/playerBase.bam")
 		model.setScale(0.2)
 		self.node = render.attachNewNode("castleMap")
 		model.reparentTo(self.node)
 		self.node.setPos(0.,0.,0.)
 		self.node.setH(-45)
 		#self.model.setColor(0.3,0.35,0.6,1.)
-		self.node.setTag("castle", '1')
-		model.node().setIntoCollideMask(BitMask32(0x04))
+		self.node.setTag("castle", '0')
+		#model.node().setIntoCollideMask(BitMask32(0x04))
 
 		#self.node.clear_material()
 		#for ts in self.node.find_all_texture_stages():
@@ -92,6 +92,8 @@ class Tower():
 		self.range = 5.0
 		self.cooldown = 3.0
 		self.onCD = True
+
+		#print("tower landed at " + self.node.getPos())
 
 		# initialise detection of enemies in range
 		self.rangeSphere = CollisionSphere(0, 0, 0, self.range)

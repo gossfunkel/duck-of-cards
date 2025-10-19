@@ -22,7 +22,7 @@ win-size 1200 800
 show-frame-rate-meter 1
 //hardware-animated-vertices true
 //basic-shaders-only false
-//model-cache-dir
+model-cache-dir
 //threading-model Cull/Draw
 hardware-animated-vertices true
 model-cache-dir
@@ -406,7 +406,13 @@ class GamestateFSM(FSM):
 	def enterPickTower(self): 
 		# enable toggle to tell updates to listen for clicks and run mouseray collider
 		# maybe start a task for the tower picker?
-		pass
+		self.waveSchedule.pause()
+		if (base.spawnSeq != None):
+			base.spawnSeq.pause()
+		for enemy in base.enemies:
+			enemy.moveSeq.pause()
+		for tower in base.towers:
+			tower.scanSeq.pause()
 
 	def exitPickTower(self):
 		#self.choosingTile = False
@@ -602,11 +608,19 @@ class DuckOfCards(ShowBase):
 
 		# keyboard controls to move isometrically
 		self.accept("arrow_left", self.move, ["left"])
+		self.accept("a", self.move, ["left"])
 		self.accept("arrow_right", self.move, ["right"])
+		self.accept("d", self.move, ["right"])
 		self.accept("arrow_up", self.move, ["fwd"])
+		self.accept("w", self.move, ["fwd"])
 		self.accept("arrow_down", self.move, ["back"])
-		self.accept("page_up", self.move, ["zoomIn"])
-		self.accept("page_down", self.move, ["zoomOut"])
+		self.accept("s", self.move, ["back"])
+		self.accept("page_down", self.move, ["down"])
+		self.accept("z", self.move, ["down"])
+		self.accept("page_up", self.move, ["up"])
+		self.accept("x", self.move, ["up"])
+		self.accept("f", self.move, ["zoomOut"])
+		self.accept("r", self.move, ["zoomIn"])
 
 		# listen for left-clicks
 		self.accept("mouse1", self.onMouse)
@@ -689,6 +703,7 @@ class DuckOfCards(ShowBase):
 				if (x==pondSpawnPoint[0] and y==pondSpawnPoint[1]):
 					tile.setTexture(self.tileTS, self.pondTex)
 					tile.setTag("TILEpond-"+str(tileIndex),str(tileIndex))
+					#tile.setColor(0,1,0,1)
 				else: 						# place a regular grass tile
 					tile.setTexture(self.tileTS, self.groundTex)
 					tile.setTag("TILEground-"+str(tileIndex),str(tileIndex))
@@ -790,10 +805,16 @@ class DuckOfCards(ShowBase):
 			self.camera.setPos(self.camera.getPos() + Vec3(0,1,0))
 		elif direction == 'back':
 			self.camera.setPos(self.camera.getPos() + Vec3(0,-1,0))
+		elif direction == 'down':
+			self.camera.setPos(self.camera.getPos() + Vec3(0,0,-1))
+		elif direction == 'up':
+			self.camera.setPos(self.camera.getPos() + Vec3(0,0,1))
 		elif direction == 'zoomIn':
-			self.camera.setScale(self.camera.getScale()*0.8)
+			#self.camera.setScale(self.camera.getScale()*0.8)
+			self.camera.setPos(self.camera.getPos() + Vec3(0,1,-1))
 		elif direction == 'zoomOut':
-			self.camera.setScale(self.camera.getScale()*1.2)
+			#self.camera.setScale(self.camera.getScale()*1.2)
+			self.camera.setPos(self.camera.getPos() + Vec3(0,-1,1))
 
 	# ray-based tile picker for placing down towers
 	def towerPlaceTask(self, task):

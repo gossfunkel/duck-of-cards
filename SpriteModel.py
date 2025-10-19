@@ -116,7 +116,7 @@ class Enemy(SpriteMod):
 		assert pos != None, f'Enemy spawning with no position!'
 
 		self.model = base.loader.loadModel("assets/dogboard1.gltf")
-		self.model.setP(90)
+		#self.model.setP(90)
 		self.model.setScale(0.1)
 		#self.model.setPos(0.,0.,.8)
 		self.node = base.enemyModelNd.attachNewNode("enemy-" + str(name))
@@ -142,7 +142,7 @@ class Enemy(SpriteMod):
 		self.dying = False
 
 		# make them look where they're going
-		self.demand(facing)
+		self.request(facing)
 
 		self.hp = 20.0
 						#CollisionCapsule(ax, ay, az, bx, by, bz, radius)
@@ -225,7 +225,7 @@ class NormalInnocentDuck(SpriteMod):
 	def __init__(self, name, pos, speed):
 		self.model = loader.loadModel("assets/duckboard1.gltf")
 		self.model.setScale(0.04)
-		self.model.setP(90)
+		#self.model.setP(90)
 		self.node = render.attachNewNode("duck-" + str(name))
 		self.model.reparent_to(self.node)
 		self.node.setPos(pos)

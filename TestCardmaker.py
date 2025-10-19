@@ -313,6 +313,7 @@ class Tower():
 		towerModel = base.loader.loadModel("assets/tower.gltf")
 		towerModel.setScale(0.2)
 		towerModel.setP(90)
+		#towerModel.set_texture(loader.loadTexture("assets/tex/towerbake.png"))
 		self.node = render.attachNewNode("tower")
 		towerModel.wrtReparentTo(self.node)
 		self.node.setPos(pos)
