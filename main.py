@@ -100,11 +100,10 @@ testing = True
 	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
 
 # TODO:
+	# = BUGFIX: tower picker broke again:(
 	# = BUGFIX: texture problems with paths and highlight not rendering correctly
-	# = BUGFIX: spritemodels no longer visible
 	# = BUGFIX: problems with orientation of models and model recolouring between different systems
 				# => turret orientation, colour
-				# => spritemodel orientation
 				# => arrow orientation
 				# => castle colour
 	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
@@ -589,7 +588,7 @@ class DuckOfCards(ShowBase):
 		#self.duckNp = self.render.attachNewNode("duck_models")
 		# temporary integer ticker to rotate the random duck
 		self.t = 0
-		randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(-2.,-2.,2.), .5)
+		randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(-2.,-2.,0.), .5)
 
 		#self.sphere = self.loader.loadModel("smiley")
 		#self.sphere.setPos(0,0,3)

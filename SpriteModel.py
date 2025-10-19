@@ -4,7 +4,6 @@ from panda3d.core import TransformState, TextureStage, VBase3
 from direct.task import Task
 from direct.interval.IntervalGlobal import *
 from direct.fsm.FSM import FSM
-from math import floor
 
 class SpriteMod(FSM):
 	def __init__(self, name, pos, speed):
@@ -112,35 +111,6 @@ class SpriteMod(FSM):
 		else:
 			return None
 
-# class SpriteModSide(SpriteMod):
-# 	def enterTopLeft(self):
-# 		print(str(self.node) + " facing top left (SpriteModSide)")
-# 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
-# 		#self.node.lookAt(self.tlNode)
-# 		#self.node.setH(90) # flip model to correct face
-
-# 	def exitTopLeft(self):
-# 		self.node.setH(0) # flip model to correct face
-
-# 	def enterTopRight(self):
-# 		print(str(self.node) + " facing top right (SpriteModSide)")
-# 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
-# 		self.node.lookAt(self.trNode)
-# 		#self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
-# 		self.node.setH(180) # flip model to correct face
-
-# 	def exitTopRight(self):
-# 		#self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
-# 		self.node.setH(0) # flip model to correct face
-
-# 	def enterBottomRight(self):
-# 		print(str(self.node) + " facing Xneg (SpriteModSide)")
-# 		self.node.lookAt(self.brNode)
-# 		self.node.setH(-90) # flip model to correct face
-
-# 	def exitBottomRight(self):
-# 		self.node.setH(0) # flip model to correct face
-
 class Enemy(SpriteMod):
 	def __init__(self, name, pos, facing, speed):
 		assert pos != None, f'Enemy spawning with no position!'
@@ -151,13 +121,13 @@ class Enemy(SpriteMod):
 		#self.model.setPos(0.,0.,.8)
 		self.node = base.enemyModelNd.attachNewNode("enemy-" + str(name))
 		self.model.reparent_to(self.node)
-		self.node.setPos(pos + Vec3(0.,0.,.8))
+		self.node.setPos(pos + Vec3(0.,0.,-.12))
 		self.node.setP(90)
 		#self.node.setScale(0.0001)
 		#self.nodepath = base.enemyModel.instanceTo(self.node)
 		super().__init__(str(name), pos, speed)
 		assert (facing == 'TopLeft' or facing == 'TopRight' or facing == 'BottomLeft' or facing == 'BottomRight'), f'Enemy generated with incorrect direction to face!'
-		print(str(name) + " spawning")
+		#print(str(name) + " spawning")
 
 		#self.node.setColor(1.,0.5,0.5,1.)
 
@@ -166,39 +136,13 @@ class Enemy(SpriteMod):
 		assert (self.node.getPos()[0] != 0 or self.node.getPos()[1] != 0), f'Enemy spawning at 0,0!'
 		#self.node.setH(-30)
 		# modified target vector to prevent enemies flying into air or sinking into ground as they approach castle
-		self.targetPos = base.castle.node.getPos() - Vec3(0.,0.,.5)
+		self.targetPos = Vec3(base.castle.node.getX(),base.castle.node.getY(),self.node.getZ())
 
 		# define dying tag and set to False until enemy loses all HP
 		self.dying = False
 
-		#self.nodepath.setH(90)
 		# make them look where they're going
 		self.demand(facing)
-		#if (self.node.getPos()[0] > 1):
-		#	self.demand('Xneg')
-		#elif (self.node.getPos()[1] > 1):
-		#	self.demand('Yneg')
-		#elif (self.node.getPos()[0] < -1):
-		#	self.demand('X')
-		#else: 
-		#	# this condition should be fine due to the assertion, but could always leave it to throw an error
-		#	self.demand('Y')
-		#self.node.lookAt(self.targetPos)
-		#if (self.targetPos.getX() - self.nodepath.getPos()[0] > 2 or self.targetPos.getX() - self.nodepath.getPos()[0] < -2):
-		#	# entity and target x are more than 2 units apart
-		#	if (self.targetPos.getX() > self.nodepath.getPos()[0]): # target is further 'up' x relative to entity
-		#		self.demand('X')
-		#		#print(str(self.node)+" facing X")
-		#	else: 								# target is lower down x-axis relative to entity
-		#		self.demand('Xneg')
-		#		#print(str(self.node)+" facing Xneg")
-		#else: # entity and target x are less than 2 units apart (aligned on x axis)
-		#	if (self.targetPos.getY() > self.nodepath.getPos()[1]): # target is further 'up' y relative to entity
-		#		self.demand('Y')
-		#		#print(str(self.node)+" facing Y")
-		#	else: 								# target is lower down y-axis relative to entity
-		#		self.demand('Yneg')
-		#		#print(str(self.node)+" facing Yneg")
 
 		self.hp = 20.0
 						#CollisionCapsule(ax, ay, az, bx, by, bz, radius)
@@ -280,7 +224,7 @@ class Enemy(SpriteMod):
 class NormalInnocentDuck(SpriteMod): 
 	def __init__(self, name, pos, speed):
 		self.model = loader.loadModel("assets/duckboard1.gltf")
-		self.model.setScale(0.5)
+		self.model.setScale(0.04)
 		self.model.setP(90)
 		self.node = render.attachNewNode("duck-" + str(name))
 		self.model.reparent_to(self.node)
@@ -295,12 +239,12 @@ class NormalInnocentDuck(SpriteMod):
 
 		self.hp = 1000000
 
-		base.taskMgr.add(self.updateDuck, "update-"+str(self.node), taskChain='default')
+		base.taskMgr.add(self.updateDuck, "update_"+str(self.node), taskChain='default')
 	
 	def updateDuck(self, task):
 		if base.fsm.state == 'Gameplay':
 			# rotate the random duck
-			if ((floor(task.time*100) % 90) == 1):
+			if ((task.frame % 150) == 1):
 				#print("duck turning")
 				self.request('Right')
 				#self.turnRight()
