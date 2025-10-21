@@ -1,6 +1,6 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import BitMask32, CollisionNode, CollisionSphere, CollisionTraverser, CollisionHandlerQueue
-from panda3d.core import Vec3
+from panda3d.core import Vec3, ModelPool
 from direct.interval.IntervalGlobal import *
 
 class PlayerCastle():
@@ -11,8 +11,10 @@ class PlayerCastle():
 		model.reparentTo(self.node)
 		self.node.setPos(0.,0.,0.)
 		self.node.setH(-45)
-		#self.model.setColor(0.3,0.35,0.6,1.)
+		# this is a flat colour, not the textures that should be baked into the model
+		model.setColor(0.3,0.35,0.6,1.)
 		self.node.setTag("castle", '0')
+		#self.node.setColor(0.3,0.35,0.6,1.)
 		#model.node().setIntoCollideMask(BitMask32(0x04))
 
 		#self.node.clear_material()
@@ -23,7 +25,7 @@ class PlayerCastle():
 	def takeDmg(self):
 		# take damage
 		base.dmgCastle(5.0)
-		# flash red for a moment
+		# flash red for a moment TODO don't use setColor, have a shader or something
 		Sequence(Func(self.node.setColor,1.2,0.1,0.1,1.),
 				Wait(0.1),
 				Func(self.node.setColor,0.3,0.35,0.6,1.)).start()
@@ -34,9 +36,6 @@ class Arrow():
 		self.node = render.attachNewNode("arrow")
 		self.arrowModel.wrtReparentTo(self.node)
 		self.arrowModel.setScale(0.06)
-		#self.node = base.arrowModelNd.attachNewNode("arrow")
-		#base.arrowModel.instanceTo(self.node)
-		# TODO this is the wrong kind of instancing! Remove it:(
 		self.node.setScale(0.6)
 		self.enemy = base.enemies[int(enemyId)]
 		self.damage = 10.0
@@ -82,7 +81,7 @@ class Tower():
 		towerModel = base.loader.loadModel("assets/tower.gltf")
 		print("spawning tower at " + str(pos))
 		towerModel.setScale(0.2)
-		towerModel.setP(90)
+		#towerModel.setP(90)
 		self.node = render.attachNewNode("tower")
 		towerModel.wrtReparentTo(self.node)
 		self.node.setPos(pos)
@@ -147,7 +146,9 @@ class Tower():
 			# find nodePoint and ID of detected enemy
 			enemyNp = self.detectorQueue.entries[0].getIntoNodePath()
 			#target = self.detectorQueue.entries[0].getSurfacePoint(enemyNp)
-			enemyId = enemyNp.getName()[26:len(enemyNp.getName())-6] #print(enemyId)
+			#enemyId = enemyNp.getName()[26:len(enemyNp.getName())-6] #print(enemyId)
+			enemyId = enemyNp.getName().split("-")[3]
+			print(enemyId)
 			# FIRE
 			self.launchProjectiles(enemyId)
 

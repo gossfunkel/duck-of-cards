@@ -741,7 +741,7 @@ class DuckOfCards(ShowBase):
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; place tower and exit tile picker state
 			# todo: sequence for animating tower placement - clunk
 			print("ONMOUSE HIT " + str(self.hitTile))
-			self.spawnTower(self.hitTile.getPos() + Vec3(0.,0,1.))
+			self.spawnTower(Vec3(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ()))
 			self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
 			self.hitTile.set_color(1,0,0,1)
 			self.hitTile = None
@@ -838,13 +838,17 @@ class DuckOfCards(ShowBase):
 					# sort by closest first
 					self.tpQueue.sortEntries() 
 					# # find tile node and get tile index
-					tileColl = self.tpQueue.getEntry(0).getIntoNodePath()
-					#self.hitTile = tileColl.getNode(1)
-					print(tileColl)
-					if (tileColl.getTag("TILEground") != ""):
+					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getParent()
+					#(tileColl)
+					#self.hitTile = tileColl.getNode(0)
+					tileInd = int(tileColl.getName().split("-")[1])
+					self.hitTile = self.tileMap.getChild(tileInd)
+					if (self.hitTile.getTag("TILEground") != ""):
 						# highlight on mouseover
-						tileInd = int(tileColl.getTag("TILEground"))
-						self.hitTile = self.tileMap.getChild(tileInd)
+						print(tileColl)
+						#tileInd = int(tileColl.getTag("TILEground"))
+						#tileInd = int(tileColl.getName().split("-")[1])
+						#self.hitTile = self.tileMap.getChild(tileInd)
 						self.hitTile.setTexture(self.tileTS, self.highlightTex, 1)
 					# tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
 					# tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
