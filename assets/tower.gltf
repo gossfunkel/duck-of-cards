@@ -59,7 +59,14 @@
 	"materials":[
 		{
 			"doubleSided":true,
-			"name":"Material"
+			"name":"Material",
+			"pbrMetallicRoughness":{
+				"baseColorTexture":{
+					"index":0
+				},
+				"metallicFactor":0,
+				"roughnessFactor":0.800000011920929
+			}
 		}
 	],
 	"meshes":[
@@ -77,6 +84,19 @@
 					"material":0
 				}
 			]
+		}
+	],
+	"textures":[
+		{
+			"sampler":0,
+			"source":0
+		}
+	],
+	"images":[
+		{
+			"mimeType":"image/png",
+			"name":"towerBake",
+			"uri":"tex/towerBake.png"
 		}
 	],
 	"accessors":[
@@ -151,6 +171,14 @@
 			"byteLength":444,
 			"byteOffset":6144,
 			"target":34963
+		}
+	],
+	"samplers":[
+		{
+			"magFilter":9729,
+			"minFilter":9987,
+			"wrapS":33071,
+			"wrapT":33071
 		}
 	],
 	"buffers":[

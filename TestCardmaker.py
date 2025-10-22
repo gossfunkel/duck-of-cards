@@ -10,6 +10,7 @@ from direct.fsm.FSM import FSM
 
 config_vars = """
 win-size 1200 800
+model-cache-dir
 show-frame-rate-meter 1
 hardware-animated-vertices true
 basic-shaders-only false
@@ -129,7 +130,7 @@ class SpriteMod(FSM):
 class NormalInnocentDuck(SpriteMod): 
 	def __init__(self, name, pos, speed):
 		#self.model = Actor("assets/duckboard1.gltf")
-		self.model = loader.loadModel("assets/duckboard1.gltf")
+		self.model = loader.loadModel("assets/roundDuck.gltf")
 		self.model.setScale(0.1)
 		self.model.setP(90)
 		self.node = render.attachNewNode("duck-" + str(name))
