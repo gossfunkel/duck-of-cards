@@ -100,16 +100,11 @@ testing = True
 	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
 
 # TODO:
-	# = BUGFIX: tower picker broke again:(
 	# = BUGFIX: texture problems with paths and highlight not rendering correctly
-	# = BUGFIX: problems with orientation of models and model recolouring between different systems
-				# => turret orientation, colour
-				# => arrow orientation
-				# => castle colour
 	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
-	# = BUGFIX: highlighting tiles on mouseover when placing tower
 	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck). n.b.
 		# pausing at the wrong time causes hundreds of dogs to spawn (!!)
+	#
 	# --- PHASE 1) Basic game mechanics
 	# = finish spritemodel directional system (models facing the right way, animate turn)
 	# - procedurally generate paths- have enemies follow path? pathfinding
@@ -121,6 +116,7 @@ testing = True
 	# - add tower models for other tower types (magic,fire,sniper,bomb,poison)
 	# - make enemies 'pop' (coin scatter animation?) and improve tile placement (animation, sfx)
 	# - confine mouse to window edges and trigger camera movement when it hits an edge
+	#
 	# --- PHASE 2) Story & progression
 	# - add in all dialogue & character sprites
 	# - make pause menu and save/load functionality	
@@ -131,6 +127,7 @@ testing = True
 	# - give towers more prioritising options (furthest forward, closest, highest hp etc)
 	# - update enemy, tower, and castle models
 	# - add pond and wandering ducks
+	#
 	# --- PHASE 3) Ending & finishing touches
 	# - procedural spawning of walls and building models between towers and castle
 	# - 'evil mode' game state transition, general colour management and filtering shaders
@@ -509,13 +506,13 @@ class DuckOfCards(ShowBase):
 		self.set_background_color(0.5,0.6,0.85,1.)
 
 		# create sunlight
-		# self.dirLight = DirectionalLight('dirLight')
-		# self.dirLight.setColorTemperature(6000)
-		# self.dirLight.setShadowCaster(True, 512, 512)
-		# #self.dirLight.setAttenuation(1,0,1)
-		# self.dirLightNp = render.attachNewNode(self.dirLight)
-		# self.dirLightNp.setHpr(-70,-40,20)
-		# render.setLight(self.dirLightNp)
+		self.dirLight = DirectionalLight('dirLight')
+		self.dirLight.setColorTemperature(6000)
+		self.dirLight.setShadowCaster(True, 512, 512)
+		#self.dirLight.setAttenuation(1,0,1)
+		self.dirLightNp = render.attachNewNode(self.dirLight)
+		self.dirLightNp.setHpr(-20,30,20)
+		render.setLight(self.dirLightNp)
 
 		# initialise the camera - isometric angle (35.264deg)
 		self.camera.setPos(0.,-10.,7.5) 
@@ -543,7 +540,7 @@ class DuckOfCards(ShowBase):
 								DialogueState(4,Sequence(Func(self.takeOfferedCard)))]
 		self.textCardMaker = CardMaker('textScreen')
 		self.textCardMaker.setHasUvs(1)
-		self.textCardMaker.clearColor()
+		#self.textCardMaker.clearColor()
 
 		# generate path textures and apply to tiles
 		self.pathTex = loader.loadTexture("assets/road-tile.png")
@@ -674,11 +671,21 @@ class DuckOfCards(ShowBase):
 		# self.hilightCard = self.render.attachNewNode(card_maker.generate())
 		# self.hilightCard.setPos(0.,0.,-10.)
 		# self.hilightCard.setHpr(0., -90., 45.)
-		self.highlightTex = loader.loadTexture("../duck-of-cards/assets/ground-tile-highlight_4.png")
+		highlightTS = TextureStage('ts')
+		highlightTS.setMode(TextureStage.MAdd)
+		self.highlightTex = loader.loadTexture("../duck-of-cards/assets/highlightTile.png")
+		#self.highlightTex = loader.loadTexture("assets/white.png")
 		self.highlightTex.setWrapU(Texture.WM_clamp)
 		self.highlightTex.setWrapV(Texture.WM_clamp)
 		self.highlightTex.setMagfilter(SamplerState.FT_nearest)
 		self.highlightTex.setMinfilter(SamplerState.FT_nearest)
+		self.highlightTile = self.render.attachNewNode(self.tile_maker.generate())
+		self.highlightTile.setTransparency(1)
+		#self.highlightTile.setColor(1,1,1,0.3)
+		self.highlightTile.setName("highlightTile")
+		self.highlightTile.setHpr(0., -90., 45.)
+		self.highlightTile.setPos(0,0,-1)
+		self.highlightTile.setTexture(highlightTS, self.highlightTex)
 
 		for x in range(width) :
 			for y in range(length):
@@ -686,7 +693,6 @@ class DuckOfCards(ShowBase):
 				# 	This gives us discrete units for procedurally modelling the duck pond, 
 				# 	rather than modelling freeform user selections (!!)
 				# The pond generation will happen in a shader
-				tileIndex += 1
 				tile = self.tileMap.attachNewNode(self.tile_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
 				tile.setName("tile-"+str(tileIndex))
 				tile.setPos(x-y,x+y-length,0.)
@@ -702,11 +708,12 @@ class DuckOfCards(ShowBase):
 				#colliderNp.show()
 				if (x==pondSpawnPoint[0] and y==pondSpawnPoint[1]):
 					tile.setTexture(self.tileTS, self.pondTex)
-					tile.setTag("TILEpond-"+str(tileIndex),str(tileIndex))
+					tile.setTag("TILEpond",str(tileIndex))
 					#tile.setColor(0,1,0,1)
 				else: 						# place a regular grass tile
 					tile.setTexture(self.tileTS, self.groundTex)
-					tile.setTag("TILEground-"+str(tileIndex),str(tileIndex))
+					tile.setTag("TILEground",str(tileIndex))
+				tileIndex += 1
 				
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
@@ -741,9 +748,10 @@ class DuckOfCards(ShowBase):
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; place tower and exit tile picker state
 			# todo: sequence for animating tower placement - clunk
 			print("ONMOUSE HIT " + str(self.hitTile))
-			self.spawnTower(Vec3(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ()))
-			self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
-			self.hitTile.set_color(1,0,0,1)
+			self.spawnTower(Vec3(self.hitTile.getX()+1.,self.hitTile.getY(),self.hitTile.getZ()))
+			self.highlightTile.setPos(0,0,-1)
+			#self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
+			#self.hitTile.set_color(1,0,0,1)
 			self.hitTile = None
 			#self.hitTile.setColor(1.,1.,1.,1.)
 			#self.hitTile.findTexture(self.tileTS).load(self.groundPNM)
@@ -819,11 +827,11 @@ class DuckOfCards(ShowBase):
 	# ray-based tile picker for placing down towers
 	def towerPlaceTask(self, task):
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
-			if self.hitTile != None: 			# clear highlighting on non-hovered tiles
-				for tile in self.tileMap.getChildren():
-					if tile != self.hitTile:
+			#if self.hitTile != None: 			# clear highlighting on non-hovered tiles
+				#for tile in self.tileMap.getChildren():
+					#if tile != self.hitTile:
 						#tile.findTexture(self.tileTS).load(self.groundPNM)
-						tile.setTexture(self.tileTS, self.groundTex, 1)
+						#tile.setTexture(self.tileTS, self.groundTex, 1)
 					#tile.setColor(1.,1.,1.,1.)
 					#print(tile.ls())
 				#self.hitTile = None
@@ -845,11 +853,12 @@ class DuckOfCards(ShowBase):
 					self.hitTile = self.tileMap.getChild(tileInd)
 					if (self.hitTile.getTag("TILEground") != ""):
 						# highlight on mouseover
-						print(tileColl)
+						print("hovering over ground tile " + str(self.hitTile))
 						#tileInd = int(tileColl.getTag("TILEground"))
 						#tileInd = int(tileColl.getName().split("-")[1])
 						#self.hitTile = self.tileMap.getChild(tileInd)
-						self.hitTile.setTexture(self.tileTS, self.highlightTex, 1)
+						self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
+						#self.hitTile.setTexture(self.tileTS, self.highlightTex, 1)
 					# tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
 					# tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
 					# # highlight on mouseover

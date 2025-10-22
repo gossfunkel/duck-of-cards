@@ -5,7 +5,7 @@ from direct.interval.IntervalGlobal import *
 
 class PlayerCastle():
 	def __init__(self):
-		model = loader.loadModel("assets/playerBase.bam")
+		model = loader.loadModel("assets/playerBase.gltf")
 		model.setScale(0.2)
 		self.node = render.attachNewNode("castleMap")
 		model.reparentTo(self.node)
