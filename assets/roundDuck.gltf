@@ -182,13 +182,9 @@
 			"doubleSided":true,
 			"name":"Material.002",
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					0,
-					0,
-					0,
-					1
-				],
-				"metallicFactor":0,
+				"baseColorTexture":{
+					"index":1
+				},
 				"roughnessFactor":0
 			}
 		}
@@ -238,6 +234,10 @@
 		{
 			"sampler":0,
 			"source":0
+		},
+		{
+			"sampler":1,
+			"source":1
 		}
 	],
 	"images":[
@@ -245,6 +245,11 @@
 			"mimeType":"image/png",
 			"name":"roundDuckColour",
 			"uri":"tex/roundDuckColour.png"
+		},
+		{
+			"mimeType":"image/png",
+			"name":"duckEyes",
+			"uri":"tex/duckEyes.png"
 		}
 	],
 	"accessors":[
@@ -383,6 +388,10 @@
 			"minFilter":9987,
 			"wrapS":33071,
 			"wrapT":33071
+		},
+		{
+			"magFilter":9729,
+			"minFilter":9987
 		}
 	],
 	"buffers":[
