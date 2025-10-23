@@ -8,6 +8,6 @@ out vec4 p3d_FragColor;
 
 void main() {
 	// generate a black fade from the bottom of the screen
-	p3d_FragColor = vec4(0.01,0.,0.02,0.9-texcoord.y*range);
+	p3d_FragColor = vec4(0.,0.,0.05,0.35);
 
 }

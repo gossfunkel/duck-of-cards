@@ -37,7 +37,7 @@ loadPrcFileData("", config_vars)
 castleHP = 100
 playerGold = 10
 waveNum = 0
-testing = True
+testing = False
 
 # GAME OPENING / TUTORIAL
 	#
@@ -100,22 +100,19 @@ testing = True
 	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
 
 # TODO:
-	# = BUGFIX: texture problems with paths and highlight not rendering correctly
 	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
 	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck). n.b.
 		# pausing at the wrong time causes hundreds of dogs to spawn (!!)
 	#
 	# --- PHASE 1) Basic game mechanics
-	# = finish spritemodel directional system (models facing the right way, animate turn)
-	# - procedurally generate paths- have enemies follow path? pathfinding
-	# - terminal-style output/dialogue at the bottom left
+	# - dogs should be facing the appropriate direction for where they spawn
 	# - improve card menu and add more cards
 	# - add more enemies and bigger waves
-	# - set up initial card offer
 	# - add more card options and do nicer card art 
 	# - add tower models for other tower types (magic,fire,sniper,bomb,poison)
 	# - make enemies 'pop' (coin scatter animation?) and improve tile placement (animation, sfx)
 	# - confine mouse to window edges and trigger camera movement when it hits an edge
+	# - procedurally generate paths- have enemies follow path? pathfinding
 	#
 	# --- PHASE 2) Story & progression
 	# - add in all dialogue & character sprites
@@ -145,9 +142,6 @@ testing = True
 
 class UI():
 	def __init__(self):
-		# pass self to fsm
-		base.fsm.ui = self
-
 		# show remaining hit points
 		self.castleHPdisplay = TextNode('castle HP display')
 		self.castleHPdisplay.setText(str(castleHP))
@@ -258,6 +252,51 @@ class UI():
 		# update player gold points display
 		self.goldDisplay.setText("GP: " + str(playerGold))
 
+	def drawText(self, dialogueString):
+		# generate text
+		dialogueText = TextNode('dialogueText')
+		# dialogueText.setFont(TextFont)
+		dialogueText.setText(dialogueString)
+		# probably need to use dialogueText.calcWidth(string) or dialogueText.setWordwrap(float) for varying text output
+		# dialogueText.setSlant(float) needed for Traveller dialogue
+		# use dialogueText.setGlyphScale(float) and dialogueText.setGlyphShift(float) for wobbly, missized text
+		dialogueText.setTextColor(1.,1.,1.,1.) # n.b. should change for different characters
+		dialogueText.setShadow(0.1, 0.1)
+		dialogueText.setShadowColor(0,0,0,0.6)
+		dialogueText.setCardColor(0.1,0.1,0.1,0.2)
+		# note that method dialogueText.setCardTexture(texture) exists
+		dialogueText.setCardAsMargin(0.5,0.5,0.5,0.1)
+		dialogueText.setCardDecal(True)
+		dialogueText.setFrameCorners(True)
+		dialogueTextNP = aspect2d.attachNewNode(dialogueText)
+		dialogueTextNP.setScale(0.1)
+		dialogueTextNP.setPos(-1.4,0.,-0.6)
+
+		return dialogueTextNP
+
+	def popupText(self, textString, duration):
+		# generate text
+		popupText = TextNode('popupText-'+str(duration)+'s')
+		# popupText.setFont(TextFont)
+		popupText.setText(textString)
+		# probably need to use dialogueText.calcWidth(string) or dialogueText.setWordwrap(float) for varying text output
+		# dialogueText.setSlant(float) needed for Traveller dialogue
+		# use dialogueText.setGlyphScale(float) and dialogueText.setGlyphShift(float) for wobbly, missized text
+		popupText.setTextColor(1.,1.,1.,1.) # n.b. should change for different characters
+		popupText.setShadow(0.1, 0.1)
+		popupText.setShadowColor(0,0,0,0.6)
+		popupText.setCardColor(0.1,0.1,0.1,0.2)
+		# note that method popupText.setCardTexture(texture) exists
+		popupText.setCardAsMargin(0.5,0.5,0.5,0.1)
+		popupText.setCardDecal(True)
+		popupText.setFrameCorners(True)
+		popupTextNP = aspect2d.attachNewNode(popupText)
+		popupTextNP.setScale(0.1)
+		popupTextNP.setPos(-1.4,0.,-0.6)
+		Sequence(Wait(duration),popupTextNP.colorScaleInterval(1,(1.,1.,1.,0.)),Func(popupTextNP.removeNode)).start()
+
+		return popupTextNP
+
 	# def showCooldown(self, pos, cooldown):
 	# 	cd = TextNode('cooldown at ' + str(pos))
 	# 	cd.setText(str(cooldown))
@@ -283,9 +322,6 @@ class GamestateFSM(FSM):
 						2: Vec3(18.,18.,0.),  	# (top right)
 						3: Vec3(18.,-18.,0.), 	# (bottom right)
 						4: Vec3(-18.,-18.,0.)} 	# (bottom left)
-
-		# empty object to be filled with ui
-		self.ui = None
 
 		# setup dialogue
 		self.inDialogue = False
@@ -338,9 +374,11 @@ class GamestateFSM(FSM):
 		for tower in base.towers:
 			tower.scanSeq.resume()
 
-		self.ui.pauseButton.show()
-		self.ui.playButton.hide()
-		self.ui.exitButton.hide()
+		base.ui.pauseButton.show()
+		base.ui.playButton.hide()
+		base.ui.exitButton.hide()
+
+		base.highlightTile.hide()
 
 	# Pause menu
 
@@ -353,25 +391,25 @@ class GamestateFSM(FSM):
 			enemy.moveSeq.pause()
 		for tower in base.towers:
 			tower.scanSeq.pause()
-		# show pause state with dimmed screen and changing pause icon
-		self.ui.pauseButton.hide()
-		self.ui.playButton.show()
+		# show pause state with dimmed screen and changing pause iconbase.textCardMaker.setFrameFullscreenQuad()
+		self.pauseFade = render2d.attachNewNode(base.textCardMaker.generate())
+		self.pauseFade.setTransparency(1)
+		tintShader = Shader.load(Shader.SL_GLSL,
+					 vertex="default.vert",
+                     fragment="pauseTint.frag")
+		self.pauseFade.setShader(tintShader)
+		base.ui.pauseButton.hide()
+		base.ui.playButton.show()
 		# show pause menu
 
 	def exitPause(self):
 		# force hide pause menu
-		self.ui.pauseButton.show()
-		self.ui.playButton.hide()
-		self.ui.exitButton.hide()
-		# return pause icon and screen to normal state
+		base.ui.pauseButton.show()
+		base.ui.playButton.hide()
+		base.ui.exitButton.hide()
+		self.pauseFade.removeNode()
 		# don't resume schedules here; this allows Gameplay to resume so that things don't
 		# 	resume when opening the menu while paused
-		#self.waveSchedule.resume()
-		#if (base.spawnSeq != None):
-		#	base.spawnSeq.resume()
-		#for enemy in base.enemies:
-		#	enemy.moveSeq.resume()
-		#pass
 
 	# Card Menu
 
@@ -387,17 +425,17 @@ class GamestateFSM(FSM):
 		# arrows still don't pause in-flight; is another for loop the right answer, or can
 		# 	i have the sequences all checking if the fsm.state == 'Gameplay' before continuing,
 		# 	and suspend until it reaches that state. Sequences can't unpause themselves tho:/
-		if self.ui.cardMenuScreen.isHidden():
-			self.ui.cardMenuScreen.show()
+		if base.ui.cardMenuScreen.isHidden():
+			base.ui.cardMenuScreen.show()
 		# update buttons
-		self.ui.duckbutt.hide()
-		self.ui.exitButton.show()
+		base.ui.duckbutt.hide()
+		base.ui.exitButton.show()
 
 	def exitCardMenu(self):
-		if not self.ui.cardMenuScreen.isHidden():
-			self.ui.cardMenuScreen.hide()
-		self.ui.duckbutt.show()
-		self.ui.exitButton.hide()
+		if not base.ui.cardMenuScreen.isHidden():
+			base.ui.cardMenuScreen.hide()
+		base.ui.duckbutt.show()
+		base.ui.exitButton.hide()
 		# n.b. what to do if leaving card menu while paused?
 
 	# Pick Tower
@@ -412,9 +450,12 @@ class GamestateFSM(FSM):
 			enemy.moveSeq.pause()
 		for tower in base.towers:
 			tower.scanSeq.pause()
+		# make the highlight for the tile picker visible
+		base.highlightTile.show()
 
 	def exitPickTower(self):
 		#self.choosingTile = False
+		base.highlightTile.hide()
 		pass
 
 	# Game Over
@@ -424,8 +465,8 @@ class GamestateFSM(FSM):
 		self.waveSchedule.pause()
 		for enemy in base.enemies:
 			enemy.move.pause()
-		if self.ui.gameOverScreen.isHidden():
-			self.ui.gameOverScreen.show()
+		if base.ui.gameOverScreen.isHidden():
+			base.ui.gameOverScreen.show()
 
 	def exitGameOver(self):
 		# reset the game
@@ -442,6 +483,14 @@ class GamestateFSM(FSM):
 			enemy.moveSeq.pause()
 		for tower in base.towers:
 			tower.scanSeq.pause()
+
+		base.ui.pauseButton.hide()
+		base.ui.playButton.hide()
+		base.ui.exitButton.hide()
+		base.ui.duckbutt.hide()
+		base.ui.castleHPdisplay.setOverallHidden(1)
+		base.ui.waveDisplay.setOverallHidden(1)
+		base.ui.goldDisplay.setOverallHidden(1)
 
 		#TODO: DON'T ENTER DIALOGUE UNLESS THE CORRECT DIALOGUE HAS BEEN LOADED!
 		# 		It needs to progress through the game linearly, and not get stuck in this state
@@ -475,7 +524,7 @@ class GamestateFSM(FSM):
 		self.inDialogue = True
 		self.dialogueStep = 0
 		
-		self.dialogueTextNP = base.drawText(base.dialogue[self.dialogueStep])
+		self.dialogueTextNP = base.ui.drawText(base.dialogue[self.dialogueStep])
 		#wait for user to click
 		self.clickWaiting = True
 
@@ -486,6 +535,12 @@ class GamestateFSM(FSM):
 		self.characterSprite.removeNode()
 		self.fadeBoxFront.removeNode()
 
+		base.ui.pauseButton.show()
+		base.ui.duckbutt.show()
+		base.ui.castleHPdisplay.setOverallHidden(0)
+		base.ui.waveDisplay.setOverallHidden(0)
+		base.ui.goldDisplay.setOverallHidden(0)
+
 		self.inDialogue = False
 		self.clickWaiting = False
 
@@ -494,6 +549,7 @@ class GamestateFSM(FSM):
 
 	def stepDialogue(self):
 		self.dialogueTextNP.node().setText(base.dialogue[self.dialogueStep])
+		# TODO: figure out how to come out of first dialogue into tower picker tutorial
 
 class DuckOfCards(ShowBase):
 	def __init__(self):
@@ -588,13 +644,7 @@ class DuckOfCards(ShowBase):
 
 		# load a random duck as a placeholder for civilian ducks
 		#self.duckNp = self.render.attachNewNode("duck_models")
-		# temporary integer ticker to rotate the random duck
-		self.t = 0
-		randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(-2.,-2.,0.), .5)
-
-		#self.sphere = self.loader.loadModel("smiley")
-		#self.sphere.setPos(0,0,3)
-		#self.sphere.reparentTo(render)
+		randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(0.,-2.,0.), .1)
 
 		# initialise the finite-state machine
 		self.fsm = GamestateFSM()
@@ -638,7 +688,6 @@ class DuckOfCards(ShowBase):
 
 		self.tileTS = TextureStage('tileTS')
 		self.tileTS.setMode(TextureStage.M_replace)
-		self.tileTS.setTexcoordName('UVMap')
 
 		# each tile is assigned a unique index, locally referred to as tileIndex:
 		tileIndex = 0
@@ -647,7 +696,6 @@ class DuckOfCards(ShowBase):
 		print("pond spawn generation: " + str(pondSpawnPoint))
 
 		self.tile_maker = CardMaker('tile-')
-		#tile_maker.setColor(1.,1.,1.,1.)
 		self.tileScaleFactor = sqrt(2) # pythagoras; turning squares sideways makes triangles maybe?
 		self.tile_maker.setFrame(0.,self.tileScaleFactor,0.,self.tileScaleFactor)
 		self.tile_maker.setHasUvs(1)
@@ -666,6 +714,7 @@ class DuckOfCards(ShowBase):
 		self.pondTex.setMagfilter(SamplerState.FT_nearest)
 		self.pondTex.setMinfilter(SamplerState.FT_nearest)
 
+		# a tile that is overlaid to show when a tile is being picked
 		highlightTS = TextureStage('ts')
 		highlightTS.setMode(TextureStage.MAdd)
 		self.highlightTex = loader.loadTexture("../duck-of-cards/assets/highlightTile.png")
@@ -680,18 +729,17 @@ class DuckOfCards(ShowBase):
 		self.highlightTile.setPos(0,0,-1)
 		self.highlightTile.setTexture(highlightTS, self.highlightTex)
 
+		# iterate through a grid width x length
 		for x in range(width) :
 			for y in range(length):
-				# Im choosing to have regular tiles to make user selections more reliable.
-				# 	This gives us discrete units for procedurally modelling the duck pond, 
-				# 	rather than modelling freeform user selections (!!)
-				# The pond generation will happen in a shader
+				# initialise a tile node, position in grid, and rotation 45 degrees from the axes
 				tile = self.tileMap.attachNewNode(self.tile_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
 				tile.setName("tile-"+str(tileIndex))
 				tile.setPos(x-y - 1.,x+y-length,0.)
 				tile.setHpr(0., -90., 45.)
 				tile.setTransparency(1)
 
+				# set up the collision solids for the tile picker
 				tileHitbox = CollisionBox(Point3(0, 0, -0.1),Point3(1.39, 1.39, 0.001))
 				tileColl = CollisionNode('cnode_'+str(tile))
 				tileColl.setIntoCollideMask(BitMask32(0x01))
@@ -699,11 +747,15 @@ class DuckOfCards(ShowBase):
 				colliderNp.setHpr(0., 90., 0.)
 				colliderNp.node().addSolid(tileHitbox)
 				#colliderNp.show()
+
 				if (x==pondSpawnPoint[0] and y==pondSpawnPoint[1]):
+					# this is the pond spawn point; set as pond tile
+					# 	the actual pond will be generated by a shader
 					tile.setTexture(self.tileTS, self.pondTex)
 					tile.setTag("TILEpond",str(tileIndex))
 					#tile.setColor(0,1,0,1)
-				else: 						# place a regular grass tile
+				else:
+					# set as a regular grass tile
 					tile.setTexture(self.tileTS, self.groundTex)
 					tile.setTag("TILEground",str(tileIndex))
 				tileIndex += 1
@@ -711,12 +763,12 @@ class DuckOfCards(ShowBase):
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
 	def placePaths(self, width, length):
+		# set up texture and stage for paths
 		self.pathTex = loader.loadTexture("assets/road-tile.png")
-		#self.pathTex.set_format(Texture.F_srgb_alpha)
-		#self.pathTex.set_format(Texture.F_rgba32)
+		self.pathTex.set_format(Texture.F_srgb_alpha)
 		self.pathTS = TextureStage('path-textureStage')
 		self.pathTS.setMode(TextureStage.MDecal)
-		#self.pathTS.setTexcoordName('pathDecal')
+
 		# find appropriate tile to decal
 		# TODO replace this with a wee path budget to spend and a random walk algorithm to spend it
 		for tile in self.tileMap.children: # currently covers the cardinal directions
@@ -725,11 +777,13 @@ class DuckOfCards(ShowBase):
 				# don't put a path on the centre tile (that's where the castle goes)
 				continue
 			if (((int(tile.getName().split("-")[1]))%width) == width/2):
+				# path going up the centre of the width axis
 				#print("placing x path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
 				tile.setTexPos(self.pathTS, .25, .3, 0.)
 				tile.setTexScale(self.pathTS, .3,.37,1)
 			if ((int(tile.getName().split("-")[1]) > width * (length/2)) and (int(tile.getName().split("-")[1]) < width * (length/2 + 1))):
+				# path going up the centre of the length axis
 				#print("placing y path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
 				tile.setTexHpr(self.pathTS, 90,0,0)
@@ -740,8 +794,6 @@ class DuckOfCards(ShowBase):
 	# TASK FUNCTIONS
 	def update(self, task):
 		dt = globalClock.getDt()
-
-		#if testing: self.sphere.setPos(self.sphere.getPos()[0] + 0.01,0,3)
 
 		if not (castleHP > 0):
 			self.fsm.demand('GameOver')
@@ -754,7 +806,7 @@ class DuckOfCards(ShowBase):
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; place tower and exit tile picker state
 			# todo: sequence for animating tower placement - clunk
-			print("ONMOUSE HIT " + str(self.hitTile))
+			#print("ONMOUSE HIT " + str(self.hitTile))
 			self.spawnTower(Vec3(self.hitTile.getX()+1.,self.hitTile.getY(),self.hitTile.getZ()))
 			self.highlightTile.setPos(0,0,-1)
 			#self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
@@ -801,7 +853,9 @@ class DuckOfCards(ShowBase):
 					Wait(2) # avoid accidentally skipping dialogue
 				else:
 					# exit dialogue if we reach the end of the array
-					self.fsm.demand('Gameplay')
+					#self.fsm.demand('Gameplay') 
+					# TEMPORARY STOPGAP FOR NO TUTORIAL - THIS WILL HAVE TO CHANGE TO ADD MORE DIALOGUE BREAKS
+					self.fsm.demand('PickTower')
 					self.fsm.setClickWaitingFalse()
 
 	def giveGold(self, amount):
@@ -834,15 +888,6 @@ class DuckOfCards(ShowBase):
 	# ray-based tile picker for placing down towers
 	def towerPlaceTask(self, task):
 		if (self.fsm.state == 'PickTower'): # if the tower placer is on
-			#if self.hitTile != None: 			# clear highlighting on non-hovered tiles
-				#for tile in self.tileMap.getChildren():
-					#if tile != self.hitTile:
-						#tile.findTexture(self.tileTS).load(self.groundPNM)
-						#tile.setTexture(self.tileTS, self.groundTex, 1)
-					#tile.setColor(1.,1.,1.,1.)
-					#print(tile.ls())
-				#self.hitTile = None
-
 			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
 				# get mouse position and traverse tileMap with the pickerRay
 				mousePos = base.mouseWatcherNode.getMouse()
@@ -852,29 +897,15 @@ class DuckOfCards(ShowBase):
 				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
 					# sort by closest first
 					self.tpQueue.sortEntries() 
-					# # find tile node and get tile index
+					# find collider node and get tile via index in name
 					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getParent()
-					#(tileColl)
 					#self.hitTile = tileColl.getNode(0)
 					tileInd = int(tileColl.getName().split("-")[1])
 					self.hitTile = self.tileMap.getChild(tileInd)
 					if (self.hitTile.getTag("TILEground") != ""):
 						# highlight on mouseover
-						print("hovering over ground tile " + str(self.hitTile))
-						#tileInd = int(tileColl.getTag("TILEground"))
-						#tileInd = int(tileColl.getName().split("-")[1])
-						#self.hitTile = self.tileMap.getChild(tileInd)
+						#print("hovering over ground tile " + str(self.hitTile))
 						self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
-						#self.hitTile.setTexture(self.tileTS, self.highlightTex, 1)
-					# tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getNode(1)
-					# tileInd = int(tileColl.getName().split("-")[1]) # trim name to index
-					# # highlight on mouseover
-					# self.hitTile = self.tileMap.getChild(tileInd)
-					# print("highlighting: " + str(self.hitTile))
-					# #self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
-					# self.hitTile.setColor(1.2,1.2,1.2,1.)
-					#self.hitTile.findTexture(self.tileTS).load(self.tileHighlight)
-					#print(tileInd)
 
 		return Task.cont
 	
@@ -950,51 +981,6 @@ class DuckOfCards(ShowBase):
 		global castleHP
 		if testing: print("Castle taking " + str(dmg) + " damage!")
 		castleHP -= dmg
-
-	def drawText(self, dialogueString):
-		# generate text
-		dialogueText = TextNode('dialogueText')
-		# dialogueText.setFont(TextFont)
-		dialogueText.setText(dialogueString)
-		# probably need to use dialogueText.calcWidth(string) or dialogueText.setWordwrap(float) for varying text output
-		# dialogueText.setSlant(float) needed for Traveller dialogue
-		# use dialogueText.setGlyphScale(float) and dialogueText.setGlyphShift(float) for wobbly, missized text
-		dialogueText.setTextColor(1.,1.,1.,1.) # n.b. should change for different characters
-		dialogueText.setShadow(0.1, 0.1)
-		dialogueText.setShadowColor(0,0,0,0.6)
-		dialogueText.setCardColor(0.1,0.1,0.1,0.2)
-		# note that method dialogueText.setCardTexture(texture) exists
-		dialogueText.setCardAsMargin(0.5,0.5,0.5,0.1)
-		dialogueText.setCardDecal(True)
-		dialogueText.setFrameCorners(True)
-		dialogueTextNP = aspect2d.attachNewNode(dialogueText)
-		dialogueTextNP.setScale(0.1)
-		dialogueTextNP.setPos(-1.4,0.,-0.6)
-
-		return dialogueTextNP
-
-	def popupText(self, textString, duration):
-		# generate text
-		popupText = TextNode('popupText-'+str(duration)+'s')
-		# popupText.setFont(TextFont)
-		popupText.setText(textString)
-		# probably need to use dialogueText.calcWidth(string) or dialogueText.setWordwrap(float) for varying text output
-		# dialogueText.setSlant(float) needed for Traveller dialogue
-		# use dialogueText.setGlyphScale(float) and dialogueText.setGlyphShift(float) for wobbly, missized text
-		popupText.setTextColor(1.,1.,1.,1.) # n.b. should change for different characters
-		popupText.setShadow(0.1, 0.1)
-		popupText.setShadowColor(0,0,0,0.6)
-		popupText.setCardColor(0.1,0.1,0.1,0.2)
-		# note that method popupText.setCardTexture(texture) exists
-		popupText.setCardAsMargin(0.5,0.5,0.5,0.1)
-		popupText.setCardDecal(True)
-		popupText.setFrameCorners(True)
-		popupTextNP = aspect2d.attachNewNode(popupText)
-		popupTextNP.setScale(0.1)
-		popupTextNP.setPos(-1.4,0.,-0.6)
-		Sequence(Wait(duration),popupTextNP.colorScaleInterval(1,(1.,1.,1.,0.)),Func(popupTextNP.removeNode)).start()
-
-		return popupTextNP
 
 	def quit(self): 		# exit the game in a reasonable fashion
 		self.fsm.cleanup()
