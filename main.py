@@ -688,7 +688,7 @@ class DuckOfCards(ShowBase):
 				# The pond generation will happen in a shader
 				tile = self.tileMap.attachNewNode(self.tile_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
 				tile.setName("tile-"+str(tileIndex))
-				tile.setPos(x-y,x+y-length,0.)
+				tile.setPos(x-y - 1.,x+y-length,0.)
 				tile.setHpr(0., -90., 45.)
 				tile.setTransparency(1)
 
@@ -716,19 +716,25 @@ class DuckOfCards(ShowBase):
 		#self.pathTex.set_format(Texture.F_rgba32)
 		self.pathTS = TextureStage('path-textureStage')
 		self.pathTS.setMode(TextureStage.MDecal)
-		self.pathTS.setTexcoordName('pathDecal')
+		#self.pathTS.setTexcoordName('pathDecal')
 		# find appropriate tile to decal
 		# TODO replace this with a wee path budget to spend and a random walk algorithm to spend it
 		for tile in self.tileMap.children: # currently covers the cardinal directions
+			#print("path checking " + str(int(tile.getName().split("-")[1])))
+			if (int(tile.getName().split("-")[1]) == (width * length/2 + width/2)):
+				# don't put a path on the centre tile (that's where the castle goes)
+				continue
 			if (((int(tile.getName().split("-")[1]))%width) == width/2):
-				print("placing x path tile at " + str(tile.getPos()))
+				#print("placing x path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
-				#tile.setTexHpr(self.pathTS, 90,0,0)
-				#tile.setTexScale(self.pathTS, 1.1,1.1,1)
-				#tile.setTexPos(self.pathTS, -.1, .1, 0.)
+				tile.setTexPos(self.pathTS, .25, .3, 0.)
+				tile.setTexScale(self.pathTS, .3,.37,1)
 			if ((int(tile.getName().split("-")[1]) > width * (length/2)) and (int(tile.getName().split("-")[1]) < width * (length/2 + 1))):
-				print("placing y path tile at " + str(tile.getPos()))
+				#print("placing y path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
+				tile.setTexHpr(self.pathTS, 90,0,0)
+				tile.setTexPos(self.pathTS, -.45, .32, 0.)
+				tile.setTexScale(self.pathTS, .37,.3,1)
 		# apply decal
 
 	# TASK FUNCTIONS
