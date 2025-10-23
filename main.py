@@ -22,9 +22,9 @@ win-size 1200 800
 show-frame-rate-meter 1
 //hardware-animated-vertices true
 //basic-shaders-only false
-model-cache-dir
 //threading-model Cull/Draw
 hardware-animated-vertices true
+framebuffer-srgb true
 model-cache-dir
 basic-shaders-only false
 threading-model Cull/Draw
@@ -202,6 +202,7 @@ class UI():
 		#newTowerCard.setScale(0.4)
 		newTowerCard.reparentTo(self.cardMenuScreen)
 		newTowerCTex = loader.loadTexture('assets/card-buildTower.png')
+		newTowerCTex.set_format(Texture.F_srgb_alpha)
 		newTowerCard.setTexture(newTowerCTex)
 
 		self.cardMenuScreen.hide()
@@ -211,6 +212,7 @@ class UI():
 										parent=self.cardMenuScreen, scale=0.4)
 		dukeImgObj.setTransparency(TransparencyAttrib.MAlpha)
 		self.duckButtonMaps = loader.loadModel('assets/duck-button_maps')
+		#self.duckButtonMaps.node().set_format(Texture.F_srgb)
 		self.duckbutt = DirectButton(geom=(self.duckButtonMaps.find('**/theDuke-sprite_ready'),
 						self.duckButtonMaps.find('**/theDuke-sprite_click'),
 						self.duckButtonMaps.find('**/theDuke-sprite_rollover'),
@@ -507,11 +509,11 @@ class DuckOfCards(ShowBase):
 
 		# create sunlight
 		self.dirLight = DirectionalLight('dirLight')
-		self.dirLight.setColorTemperature(6000)
+		self.dirLight.setColorTemperature(5800)
 		self.dirLight.setShadowCaster(True, 512, 512)
 		#self.dirLight.setAttenuation(1,0,1)
 		self.dirLightNp = render.attachNewNode(self.dirLight)
-		self.dirLightNp.setHpr(-20,30,20)
+		self.dirLightNp.setHpr(35,20,-60)
 		render.setLight(self.dirLightNp)
 
 		# initialise the camera - isometric angle (35.264deg)
@@ -525,7 +527,9 @@ class DuckOfCards(ShowBase):
 		#self.lens.setNearFar(-40,40)
 		#self.camera.node().setLens(self.lens)
 
-		self.createMap(40,40)
+		width = 40
+		length = 40
+		self.createMap(width,length)
 
 		#self.tileMap.ls()
 
@@ -543,12 +547,7 @@ class DuckOfCards(ShowBase):
 		#self.textCardMaker.clearColor()
 
 		# generate path textures and apply to tiles
-		self.pathTex = loader.loadTexture("assets/road-tile.png")
-		#self.pathTex.set_format(Texture.F_rgba32)
-		self.pathTS = TextureStage('path-textureStage')
-		self.pathTS.setMode(TextureStage.MDecal)
-		self.pathTS.setTexcoordName('UVMap')
-		self.placePaths()
+		self.placePaths(width,length)
 
 		# initialise the tile picker
 		self.tilePicker = CollisionTraverser()
@@ -635,9 +634,7 @@ class DuckOfCards(ShowBase):
 	def createMap(self, width, length): 	# generate pickable tiles to place towers on
 		# generate ground tile model and instance, creating node map
 		self.tileMap = render.attachNewNode("tileMap")
-		# self.tileModel = self.loader.loadModel("assets/groundTile.egg")
 		# self.lakeTiles = self.render.attachNewNode("lakeTiles")
-		# self.lakeTileModel = self.loader.loadModel("assets/lakeTile.egg")
 
 		self.tileTS = TextureStage('tileTS')
 		self.tileTS.setMode(TextureStage.M_replace)
@@ -661,6 +658,7 @@ class DuckOfCards(ShowBase):
 		self.groundTex.setWrapV(Texture.WM_clamp)
 		self.groundTex.setMagfilter(SamplerState.FT_nearest)
 		self.groundTex.setMinfilter(SamplerState.FT_nearest)
+		self.groundTex.set_format(Texture.F_srgb)
 
 		self.pondTex = loader.loadTexture("../duck-of-cards/assets/lake-tile_4.png")
 		self.pondTex.setWrapU(Texture.WM_clamp)
@@ -668,20 +666,15 @@ class DuckOfCards(ShowBase):
 		self.pondTex.setMagfilter(SamplerState.FT_nearest)
 		self.pondTex.setMinfilter(SamplerState.FT_nearest)
 
-		# self.hilightCard = self.render.attachNewNode(card_maker.generate())
-		# self.hilightCard.setPos(0.,0.,-10.)
-		# self.hilightCard.setHpr(0., -90., 45.)
 		highlightTS = TextureStage('ts')
 		highlightTS.setMode(TextureStage.MAdd)
 		self.highlightTex = loader.loadTexture("../duck-of-cards/assets/highlightTile.png")
-		#self.highlightTex = loader.loadTexture("assets/white.png")
 		self.highlightTex.setWrapU(Texture.WM_clamp)
 		self.highlightTex.setWrapV(Texture.WM_clamp)
 		self.highlightTex.setMagfilter(SamplerState.FT_nearest)
 		self.highlightTex.setMinfilter(SamplerState.FT_nearest)
 		self.highlightTile = self.render.attachNewNode(self.tile_maker.generate())
 		self.highlightTile.setTransparency(1)
-		#self.highlightTile.setColor(1,1,1,0.3)
 		self.highlightTile.setName("highlightTile")
 		self.highlightTile.setHpr(0., -90., 45.)
 		self.highlightTile.setPos(0,0,-1)
@@ -717,16 +710,24 @@ class DuckOfCards(ShowBase):
 				
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
-	def placePaths(self):
+	def placePaths(self, width, length):
+		self.pathTex = loader.loadTexture("assets/road-tile.png")
+		#self.pathTex.set_format(Texture.F_srgb_alpha)
+		#self.pathTex.set_format(Texture.F_rgba32)
+		self.pathTS = TextureStage('path-textureStage')
+		self.pathTS.setMode(TextureStage.MDecal)
+		self.pathTS.setTexcoordName('pathDecal')
 		# find appropriate tile to decal
 		# TODO replace this with a wee path budget to spend and a random walk algorithm to spend it
 		for tile in self.tileMap.children: # currently covers the cardinal directions
-			if (tile.getX() == 0 and tile.getY() != 0):
+			if (((int(tile.getName().split("-")[1]))%width) == width/2):
+				print("placing x path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
 				#tile.setTexHpr(self.pathTS, 90,0,0)
 				#tile.setTexScale(self.pathTS, 1.1,1.1,1)
-				tile.setTexPos(self.pathTS, -.1, .1, 0.)
-			if (tile.getY() == 0 and tile.getX() != 0):
+				#tile.setTexPos(self.pathTS, -.1, .1, 0.)
+			if ((int(tile.getName().split("-")[1]) > width * (length/2)) and (int(tile.getName().split("-")[1]) < width * (length/2 + 1))):
+				print("placing y path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
 		# apply decal
 
@@ -925,6 +926,7 @@ class DuckOfCards(ShowBase):
 		self.newTowerCard.setScale(1.4)
 		#self.newTowerCard.reparentTo(aspect2d)
 		newTowerCTex = loader.loadTexture('assets/card-buildTower.png')
+		newTowerCTex.set_format(Texture.F_srgb_alpha)
 		self.newTowerCard.setTexture(newTowerCTex)
 
 	def takeOfferedCard(self):
