@@ -40,10 +40,9 @@ waveNum = 0
 testing = False
 
 # GAME OPENING / TUTORIAL
-	#
 	# <intro dialogue sequence>
 	# <Enter PickTower; user places first tower>
-	# dialogue sequence 2:
+	# dialogue sequence 2, after wave 1:
 	# "Bweeeell, you took care of them. Perhaps there will be a place for you in my fine little fiefdom."
 	# "The fine ducks of the pond have been set upon by dogs for months, since they found our new home."
 	# "Of course, I keep all the fiefdom safe with my mighty magic cards!"
@@ -109,19 +108,20 @@ testing = False
 	# - improve card menu and add more cards
 	# - add more enemies and bigger waves
 	# - add more card options and do nicer card art 
-	# - add tower models for other tower types (magic,fire,sniper,bomb,poison)
+	# - add more tower types (magic,fire,ranger,bomb,poison)
+	# - give towers more prioritising options (furthest forward, closest, highest hp etc)
 	# - make enemies 'pop' (coin scatter animation?) and improve tile placement (animation, sfx)
-	# - confine mouse to window edges and trigger camera movement when it hits an edge
-	# - procedurally generate paths- have enemies follow path? pathfinding
+	# - confine mouse to window edges and move the camera when it hits an edge
+	# - procedurally generate paths and have enemies follow path? or add more interesting pathfinding
+	# - wave splashscreen/nice HUD texture
 	#
 	# --- PHASE 2) Story & progression
 	# - add in all dialogue & character sprites
-	# - make pause menu and save/load functionality	
+	# - improve pause menu and add save/load functionality (steam cloud sync?)
 	# - make and add some music!
 	# - implement missions (only a few, for the main story sections)
 	# - improve progression display and splashes/notifiers for mission/wave progress
 	# - add more terrain/some random plant sprites
-	# - give towers more prioritising options (furthest forward, closest, highest hp etc)
 	# - update enemy, tower, and castle models
 	# - add pond and wandering ducks
 	#
@@ -138,6 +138,7 @@ testing = False
 		# -> fx/animations/effect shaders
 		# -> set dressing / props
 		# -> card art
+		# -> buttons/menu textures
 	# - distribution build
 
 class UI():
@@ -345,6 +346,7 @@ class GamestateFSM(FSM):
 				#Func(base.spawnEnemyWave, 10, self.spawner[3]),
 				Wait(10.0),
 				Func(base.spawnEnemyWave, 10, self.spawner[2]),
+				Func(base.spawnEnemyWave, 10, self.spawner[3]),
 				Func(base.spawnEnemyWave, 10, self.spawner[4]),
 			)
 		else:
@@ -909,8 +911,8 @@ class DuckOfCards(ShowBase):
 
 		return Task.cont
 	
-	def spawnEnemy(self, pos, facing): 				# spawn an individual creep
-		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, facing, 1.)
+	def spawnEnemy(self, pos): 				# spawn an individual creep
+		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, 1.)
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
 
@@ -920,13 +922,13 @@ class DuckOfCards(ShowBase):
 
 		print("Spawning wave " + str(waveNum))
 		self.spawnSeq = Sequence() 
-		if pos == self.fsm.spawner[1]: facing = 'BottomLeft'
-		elif pos == self.fsm.spawner[2]: facing = 'BottomRight'
-		elif pos == self.fsm.spawner[3]: facing = 'TopRight'
-		elif pos == self.fsm.spawner[4]: facing = 'TopLeft'
-		else: raise ValueError('Enemies spawning in an unapproved location [base.spawnEnemyWave]')
+		#if pos == self.fsm.spawner[1]: facing = 'BottomLeft'
+		#elif pos == self.fsm.spawner[2]: facing = 'BottomRight'
+		#elif pos == self.fsm.spawner[3]: facing = 'TopRight'
+		#elif pos == self.fsm.spawner[4]: facing = 'TopLeft'
+		#else: raise ValueError('Enemies spawning in an unapproved location [base.spawnEnemyWave]')
 		for _ in range(num):
-			self.spawnSeq.append(Func(self.spawnEnemy,pos,facing))
+			self.spawnSeq.append(Func(self.spawnEnemy,pos))
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.append(Func(self.resetSpawnSeq))
 		self.spawnSeq.start()
@@ -951,7 +953,7 @@ class DuckOfCards(ShowBase):
 			self.fsm.demand('PickTower')
 		else:
 			# TODO: show hoverover tip that you can't afford this card
-			self.popupText("broke bitch",2)
+			self.ui.popupText("broke bitch",2)
 			pass
 
 	def offerCard(self):

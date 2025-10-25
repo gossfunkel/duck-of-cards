@@ -16,7 +16,7 @@ class SpriteMod(FSM):
 		self.speed = speed
 		#self.period = 90. / speed
 
-		self.node.setH(45)
+		self.node.setH(self.node.getH() + 45)
 
 	def defaultFilter(self, request, args):
 		return 'BottomLeft'
@@ -112,7 +112,7 @@ class SpriteMod(FSM):
 			return None
 
 class Enemy(SpriteMod):
-	def __init__(self, name, pos, facing, speed):
+	def __init__(self, name, pos, speed):
 		assert pos != None, f'Enemy spawning with no position!'
 
 		self.model = base.loader.loadModel("assets/dogboard1.gltf")
@@ -126,7 +126,28 @@ class Enemy(SpriteMod):
 		#self.node.setScale(0.0001)
 		#self.nodepath = base.enemyModel.instanceTo(self.node)
 		super().__init__(str(name), pos, speed)
-		assert (facing == 'TopLeft' or facing == 'TopRight' or facing == 'BottomLeft' or facing == 'BottomRight'), f'Enemy generated with incorrect direction to face!'
+
+		if (pos.getX() > 0 and pos.getY() > 0):
+			print("enemy +x +y")
+			self.model.setH(180)
+			self.node.setHpr(-270,180,0)
+			#self.node.setH(-270)
+			facing = 'TopRight'
+		elif (pos.getX() <= 0 and pos.getY() > 0):
+			print("enemy -x +y")
+			#self.model.setH(0)
+			facing = 'TopLeft'
+		elif (pos.getX() > 0 and pos.getY() <= 0):
+			print("enemy +x -y")
+			self.node.setHpr(-90,0,0)
+			facing = 'BottomRight'
+		elif (pos.getX() <= 0 and pos.getY() <= 0):
+			print("enemy -x -y")
+			self.model.setH(270)
+			facing = 'BottomLeft'
+		else:
+			raise AssertionError("Enemy spawn location bugged!")
+		#assert (facing == 'TopLeft' or facing == 'TopRight' or facing == 'BottomLeft' or facing == 'BottomRight'), f'Enemy generated with incorrect direction to face!'
 		#print(str(name) + " spawning")
 
 		#self.node.setColor(1.,0.5,0.5,1.)

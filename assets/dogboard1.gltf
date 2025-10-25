@@ -12,6 +12,55 @@
 	"scene":0,
 	"scenes":[
 		{
+			"extras":{
+				"yabee_settings":{
+					"opt_tex_proc":"BAKE",
+					"opt_tbs_proc":2,
+					"opt_bake_diffuse":{
+						"export":1,
+						"res_x":512,
+						"res_y":512
+					},
+					"opt_bake_normal":{
+						"export":0,
+						"res_x":512,
+						"res_y":512
+					},
+					"opt_bake_gloss":{
+						"export":0,
+						"res_x":512,
+						"res_y":512
+					},
+					"opt_bake_glow":{
+						"export":0,
+						"res_x":512,
+						"res_y":512
+					},
+					"opt_bake_AO":{
+						"export":0,
+						"res_x":512,
+						"res_y":512
+					},
+					"opt_bake_shadow":{
+						"export":0,
+						"res_x":512,
+						"res_y":512
+					},
+					"opt_export_uv_as_texture":0,
+					"opt_copy_tex_files":1,
+					"opt_separate_anim_files":1,
+					"opt_anim_only":0,
+					"opt_tex_path":"./tex",
+					"opt_merge_actor":1,
+					"opt_apply_modifiers":1,
+					"opt_pview":0,
+					"opt_use_loop_normals":0,
+					"opt_export_pbs":0,
+					"opt_force_export_vertex_colors":0,
+					"opt_anim_list":{},
+					"first_run":0
+				}
+			},
 			"name":"Scene",
 			"nodes":[
 				0,
@@ -21,6 +70,9 @@
 	],
 	"nodes":[
 		{
+			"extras":{
+				"yabee_name":"Empty.001"
+			},
 			"mesh":0,
 			"name":"Empty.001",
 			"rotation":[
@@ -36,6 +88,9 @@
 			]
 		},
 		{
+			"extras":{
+				"yabee_name":"Empty.002"
+			},
 			"mesh":1,
 			"name":"Empty.002",
 			"rotation":[
@@ -74,13 +129,16 @@
 					"ior":1.1999999284744263
 				}
 			},
+			"extras":{
+				"yabee_name":"dogrear"
+			},
 			"name":"dogrear",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":0
 				},
 				"metallicFactor":0,
-				"roughnessFactor":0.8999999761581421
+				"roughnessFactor":0.8190000057220459
 			}
 		},
 		{
@@ -105,6 +163,9 @@
 					"ior":1.1999999284744263
 				}
 			},
+			"extras":{
+				"yabee_name":"dogfront"
+			},
 			"name":"dogfront",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
@@ -117,6 +178,9 @@
 	],
 	"meshes":[
 		{
+			"extras":{
+				"yabee_name":"Empty"
+			},
 			"name":"Empty",
 			"primitives":[
 				{
@@ -132,6 +196,9 @@
 			]
 		},
 		{
+			"extras":{
+				"yabee_name":"Empty.001"
+			},
 			"name":"Empty.001",
 			"primitives":[
 				{
@@ -160,8 +227,8 @@
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"basic-dog-1_back.png",
-			"uri":"basic-dog-1_back.png"
+			"name":"basic-dog-2_back.png",
+			"uri":"basic-dog-2_back.png"
 		},
 		{
 			"mimeType":"image/png",
