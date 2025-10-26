@@ -124,6 +124,7 @@ testing = False
 	# - add more terrain/some random plant sprites
 	# - update enemy, tower, and castle models
 	# - add pond and wandering ducks
+	# - make 'springy' buttons and icons (give UI elements conservable momentum)
 	#
 	# --- PHASE 3) Ending & finishing touches
 	# - procedural spawning of walls and building models between towers and castle
