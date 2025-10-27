@@ -2,6 +2,8 @@ from direct.showbase.ShowBase import ShowBase
 from panda3d.core import BitMask32, CollisionNode, CollisionSphere, CollisionTraverser, CollisionHandlerQueue
 from panda3d.core import Vec3, ModelPool
 from direct.interval.IntervalGlobal import *
+import numpy as np
+import tools
 
 class PlayerCastle():
 	def __init__(self):
@@ -84,7 +86,8 @@ class Tower():
 		#towerModel.setP(90)
 		self.node = render.attachNewNode("tower")
 		towerModel.wrtReparentTo(self.node)
-		self.node.setPos(pos)
+		self.landPosition = pos
+		self.node.setPos(pos.getX(),pos.getY(),pos.getZ() + .04)
 		#self.node.setScale()
 		self.rateOfFire = 1.0
 		self.damage = 1.0
@@ -92,7 +95,7 @@ class Tower():
 		self.cooldown = 3.0
 		self.onCD = True
 
-		#print("tower landed at " + self.node.getPos())
+		self.vel = Vec3(0.,0.,-0.2)
 
 		# initialise detection of enemies in range
 		self.rangeSphere = CollisionSphere(0, 0, 0, self.range)
@@ -113,8 +116,23 @@ class Tower():
 		self.cdSeq.start()
 		self.scanSeq.loop()
 
-		#base.taskMgr.add(self.update, str(self.node)+"_update", taskChain='default')
-		# task replaced with sequence for pausability
+		base.taskMgr.add(self.land, str(self.node)+"_land", taskChain='default')
+		# update task replaced with sequence for pausability
+
+	def land(self, task):
+		dist = self.node.getPos() - self.landPosition
+		sumDist = np.sqrt(dist[0]*dist[0] + dist[1]*dist[1] + dist[2]*dist[2])
+		#print("dist:" + str(dist))
+		if (sumDist < tools.epsilon and sumDist > 0):
+			self.node.setPos(self.landPosition)
+			# TODO: play clunk noise
+			print("tower landed at " + str(self.node.getPos()))
+			return task.done
+		else:
+			pos, self.vel = tools.calcDampedSHM(self.node.getPos(),self.vel,self.landPosition,globalClock.getDt(),15., .99)
+			self.node.setPos(pos)
+			#print("pos: " + str(self.node.getPos()) + " | vel: " + str(self.vel))
+			return task.cont
 
 	def update(self):
 		if not self.onCD: self.attackScan()

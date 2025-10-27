@@ -19,11 +19,6 @@ def calcDampedSHM(pos,vel,equilibriumPos,deltaTime,angularFreq,dampRatio):
 	assert (angularFreq >= 0.), f'SHM angular frequency parameter must be positive!'
 	assert (dampRatio >= 0.), f'SHM damping ratio parameter must be positive!'
 
-	#dist = pos - equilibriumPos
-	#if (dist < epsilon): 
-	#	# close enough
-	#	return equilibriumPos,Vec3(0,0,0)
-
 	if (angularFreq < epsilon):
 		print("SHM frequency too low to change motion!")
 		pospos = 1.
