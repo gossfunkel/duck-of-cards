@@ -1,11 +1,12 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import CardMaker, loadPrcFileData, Shader, ShaderInput, TextNode #, TextureStage,
+from panda3d.core import CardMaker, loadPrcFileData, Shader, ShaderInput, TextNode, TextureStage
 from panda3d.core import Texture, SamplerState, CollisionBox, CollisionNode, BitMask32, Point3
-from panda3d.core import CollisionRay, CollisionTraverser, CollisionHandlerQueue, Vec3
+from panda3d.core import CollisionRay, CollisionTraverser, CollisionHandlerQueue, Vec3, PNMImage
 from direct.actor.Actor import Actor
 from direct.interval.FunctionInterval import Wait
 from direct.interval.LerpInterval import LerpHprInterval
 from math import sin, sqrt
+from random import randint
 from direct.fsm.FSM import FSM
 
 config_vars = """
@@ -19,7 +20,7 @@ threading-model Cull/Draw
 loadPrcFileData("", config_vars)
 
 width = 100
-height = 100
+length = 100
 
 class SpriteMod(FSM):
 	def __init__(self, name, pos, speed):
@@ -331,7 +332,7 @@ class DuckBase(ShowBase):
 		ShowBase.__init__(self)
 
 		# disable default editor mouse behaviour
-		#base.disableMouse()
+		base.disableMouse()
 
 		# ticker
 		self.t = 0.
@@ -353,21 +354,21 @@ class DuckBase(ShowBase):
 		# create dialogue UI
 		#self.enterDialogue()
 
-		randomDuck = NormalInnocentDuck("an_innocent_duck", Vec3(-1.,5.,0.), 1.5)
-		self.enemyModelNd = render.attachNewNode("enemyNodes")
-		newEnemy = Enemy("enemy-" + str(0), Vec3(1,5,0), 'TopRight', 1.)
-		newTower = Tower(Vec3(0,4,0))
+		#randomDuck = NormalInnocentDuck("an_innocent_duck", Vec3(-1.,5.,0.), 1.5)
+		#self.enemyModelNd = render.attachNewNode("enemyNodes")
+		#newEnemy = Enemy("enemy-" + str(0), Vec3(1,5,0), 'TopRight', 1.)
+		#newTower = Tower(Vec3(0,4,0))
 
-		#initialise the tile picker
-		# self.tPickerRay = CollisionRay()
-		# self.tilePicker = CollisionTraverser()
-		# self.tpQueue = CollisionHandlerQueue()
-		# tpNode = CollisionNode('tp-node')
-		# tpNode.setFromCollideMask(BitMask32(0x01))
-		# tpNp = self.cam.attachNewNode(tpNode)
-		# tpNode.addSolid(self.tPickerRay)
-		# self.tilePicker.addCollider(tpNp, self.tpQueue)
-		# self.hitTile = None
+		# initialise the tile picker
+		self.tilePicker = CollisionTraverser()
+		self.tpQueue = CollisionHandlerQueue()
+		tilePickerNode = CollisionNode('tilePicker-node')
+		tilePickerNP = camera.attachNewNode(tilePickerNode)
+		tilePickerNode.setFromCollideMask(BitMask32(0x01))
+		self.tilePickerRay = CollisionRay()
+		tilePickerNode.addSolid(self.tilePickerRay)
+		self.tilePicker.addCollider(tilePickerNP, self.tpQueue)
+		self.hitTile = None
 		#UNCOMMENT FOR DEBUG 
 		#self.tilePicker.showCollisions(render)
 		#tpNp.show()
@@ -377,73 +378,114 @@ class DuckBase(ShowBase):
 		# 	render.clear_texture(ts)
 
 		# initialise camera position and angle:
-		self.camera.setPos(0.,-5.,0.)
-		#self.camera.lookAt(0.,0.,0.)
+		self.camera.setPos(0.,-5.,4.)
+		self.camera.lookAt(0.,0.,0.)
 		#self.camera.lookAt(randomDuck.model)
 
 		# listen for left-clicks
-		#self.accept("mouse1", self.onMouse)
+		self.accept("mouse1", self.onMouse)
 
-		#self.taskMgr.add(self.tilePickerWatcher, 'tilePickerWatcher', taskChain='default')
+		self.taskMgr.add(self.tilePickerWatcher, 'tilePickerWatcher', taskChain='default')
 		#self.taskMgr.add(self.update, "update", taskChain='default')
 
 	# LOADING FUNCTIONS: 				=========================
 
 	def generateTerrain(self):
-		#card_maker.setColor(1.,1.,1.,1.)
+		self.mapImg = PNMImage(100,100,4,255)
+		self.mapImg.fill(1.0,0.0,0.0)
+
+		self.tileMap = render.attachNewNode("tileMap")
+		# self.lakeTiles = self.render.attachNewNode("lakeTiles")
+
+		self.tileTS = TextureStage('tileTS')
+		self.tileTS.setMode(TextureStage.M_replace)
+
+		# each tile is assigned a unique index, locally referred to as tileIndex:
+		tileIndex = 0
+		# a random spawn point for the duck pond is generated:
+		pondSpawnPoint = [randint(2,int(width)-2), randint(2,int(length)-2)]
+		print("pond spawn generation: " + str(pondSpawnPoint))
+
+		self.tile_maker = CardMaker('tile-')
 		self.tileScaleFactor = sqrt(2) # pythagoras; turning squares sideways makes triangles maybe?
-		self.card_maker.setFrame(0.,self.tileScaleFactor,0.,self.tileScaleFactor)
+		self.tile_maker.setFrame(0.,self.tileScaleFactor,0.,self.tileScaleFactor)
+		self.tile_maker.setHasUvs(1)
+		self.tile_maker.clearColor()
 
 		self.groundTex = loader.loadTexture("../duck-of-cards/assets/ground-tile_4.png")
 		self.groundTex.setWrapU(Texture.WM_clamp)
 		self.groundTex.setWrapV(Texture.WM_clamp)
 		self.groundTex.setMagfilter(SamplerState.FT_nearest)
 		self.groundTex.setMinfilter(SamplerState.FT_nearest)
+		self.groundTex.set_format(Texture.F_srgb)
 
-		# self.hilightCard = self.render.attachNewNode(card_maker.generate())
-		# self.hilightCard.setPos(0.,0.,-10.)
-		# self.hilightCard.setHpr(0., -90., 45.)
-		self.highlightTex = loader.loadTexture("../duck-of-cards/assets/ground-tile-highlight_4.png")
+		self.pondTex = loader.loadTexture("../duck-of-cards/assets/lake-tile_4.png")
+		self.pondTex.setWrapU(Texture.WM_clamp)
+		self.pondTex.setWrapV(Texture.WM_clamp)
+		self.pondTex.setMagfilter(SamplerState.FT_nearest)
+		self.pondTex.setMinfilter(SamplerState.FT_nearest)
+
+		# a tile that is overlaid to show when a tile is being picked
+		highlightTS = TextureStage('ts')
+		highlightTS.setMode(TextureStage.MAdd)
+		self.highlightTex = loader.loadTexture("../duck-of-cards/assets/highlightTile.png")
 		self.highlightTex.setWrapU(Texture.WM_clamp)
 		self.highlightTex.setWrapV(Texture.WM_clamp)
 		self.highlightTex.setMagfilter(SamplerState.FT_nearest)
 		self.highlightTex.setMinfilter(SamplerState.FT_nearest)
+		self.highlightTile = self.render.attachNewNode(self.tile_maker.generate())
+		self.highlightTile.setTransparency(1)
+		self.highlightTile.setName("highlightTile")
+		self.highlightTile.setHpr(0., -90., 45.)
+		self.highlightTile.setPos(0,0,-1)
+		self.highlightTile.setTexture(highlightTS, self.highlightTex)
 
-		self.hilightCard = self.render.attachNewNode(self.card_maker.generate())
-		self.hilightCard.setPos(0.,0.,-11.)
-		self.hilightCard.setHpr(0., -90., 45.)
-		highlightTile = loader.loadTexture("../duck-of-cards/assets/ground-tile-highlight_4.png")
-		highlightTile.setWrapU(Texture.WM_clamp)
-		highlightTile.setWrapV(Texture.WM_clamp)
-		highlightTile.setMagfilter(SamplerState.FT_nearest)
-		highlightTile.setMinfilter(SamplerState.FT_nearest)
-
-		tileInd = 0
-		for x in range(width):
-			for y in range(height):
-				tileInd += 1
-				tile = self.render.attachNewNode(self.card_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
-				tile.setPos(x-y,x+y-50,0.)
+		# iterate through a grid width x length
+		for u in range(width) :
+			for v in range(length):
+				# initialise a tile node, position in grid, and rotation 45 degrees from the axes
+				tile = self.tileMap.attachNewNode(self.tile_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
+				tile.setName("tile-"+str(tileIndex))
+				tile.setPos(u-v - 1.,u+v-length,0.)
 				tile.setHpr(0., -90., 45.)
 				tile.setTransparency(1)
 
-				#tileHitbox = CollisionBox(Point3(0, 0, -0.1),Point3(1.4, 1.4, .01))
-				#tileColl = CollisionNode('cnode_'+str(tile))
-				#print(self.centreTile.getTightBounds())
-
-				tileHitbox = CollisionBox(Point3(0., 0., -0.1),Point3(1., 1., 0.1))
-				tileColl = CollisionNode(str(tile)+'-cnode')
+				# set up the collision solids for the tile picker
+				tileHitbox = CollisionBox(Point3(0, 0, -0.1),Point3(1.39, 1.39, 0.001))
+				tileColl = CollisionNode('cnode_'+str(tile))
 				tileColl.setIntoCollideMask(BitMask32(0x01))
-				if (x != 50 or y != 50):
-					tileColl.setTag("TILEground",str(tileInd))
-					tile.setTexture(self.groundTex, 1)
-				else:
-					tileColl.setTag("TILEpond",str(tileInd))
-					tile.setTexture(loader.loadTexture("maps/noise.rgb"), 1)
 				colliderNp = tile.attachNewNode(tileColl)
 				colliderNp.setHpr(0., 90., 0.)
 				colliderNp.node().addSolid(tileHitbox)
 				#colliderNp.show()
+				tile.setTag("u",str(u))
+				tile.setTag("v",str(v))
+
+				if (u==pondSpawnPoint[0] and v==pondSpawnPoint[1]):
+					# this is the pond spawn point; set as pond tile
+					# 	the actual pond will be generated by a shader
+					tile.setTexture(self.tileTS, self.pondTex)
+					tile.setTag("TILEpond",str(tileIndex))
+					self.mapImg.setGreenVal(u,v,2) # type 2: pond
+					self.mapImg.setBlueVal(u,v,0) # empty upgrade index
+					self.mapImg.setAlphaVal(u,v,8) # 1000 - collides, not pickable, not upgraded, not damageable friendly structure
+					#tile.setColor(0,1,0,1)
+				else:
+					# set as a regular grass tile
+					tile.setTexture(self.tileTS, self.groundTex)
+					tile.setTag("TILEground",str(tileIndex))
+					self.mapImg.setGreenVal(u,v,1) # type 1: grass
+					self.mapImg.setBlueVal(u,v,0) # empty upgrade index
+					self.mapImg.setAlphaVal(u,v,4) # 0100 - does not collide, pickable, not upgraded, not damageable friendly structure
+				tileIndex += 1
+		self.mapImg.setGreenVal(49,49,3) # type 3: castle
+		self.mapImg.setAlphaVal(49,49,1) # 0001 - does not collide, not pickable, not upgraded, damageable friendly structure
+		self.mapImg.setGreenVal(49,50,3) # type 3: castle
+		self.mapImg.setAlphaVal(49,50,1) # 0001 - does not collide, not pickable, not upgraded, damageable friendly structure
+		self.mapImg.setGreenVal(50,49,3) # type 3: castle
+		self.mapImg.setAlphaVal(50,49,1) # 0001 - does not collide, not pickable, not upgraded, damageable friendly structure
+		self.mapImg.setGreenVal(50,50,3) # type 3: castle
+		self.mapImg.setAlphaVal(50,50,1) # 0001 - does not collide, not pickable, not upgraded, damageable friendly structure
 
 	def enterDialogue(self):
 		# generate a black fade from the bottom of the screen for the character background
@@ -523,54 +565,112 @@ class DuckBase(ShowBase):
 		#self.cardnp.setColor(sint*sint,1-sint*sint,1.)
 		#return task.cont
 
-	#def tilePickerWatcher(self, task):
-		# if self.hitTile != None: 			# clear highlighting on non-hovered tiles
-		# 	self.hitTile.setTexture(self.groundTex,1)
-		# 	#for tile in self.tileMap.getChildren():
-		# 		#if tile != self.hitTile:
-		# 		#tile.findTexture(self.tileTS).load(self.groundPNM)
-		# 		#tile.setTexture(self.tileTS, self.groundTex, 2)
-		# 		#print(tile.ls())
-		# 	self.hitTile = None
-		# if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
-		# 	# get mouse position and traverse tileMap with the pickerRay
-		# 	mousePos = self.mouseWatcherNode.getMouse()
-		# 	self.tPickerRay.setFromLens(self.camNode, mousePos.getX(), mousePos.getY())
-		# 	self.tilePicker.traverse(self.render)
+	def tilePickerWatcher(self, task):
+		if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
+			self.highlightTile.show()
+			# get mouse position and traverse tileMap with the pickerRay
+			mousePos = base.mouseWatcherNode.getMouse()
+			self.tilePickerRay.setFromLens(base.camNode, mousePos.x, mousePos.y)
+			self.tilePicker.traverse(self.tileMap)
 
-		# 	if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
-		# 		# sort by closest first
-		# 		self.tpQueue.sortEntries() 
-		# 		# find tile node and get tile index
-		# 		tileColl = self.tpQueue.getEntry(0).getIntoNodePath()
-		# 		#self.hitTile = tileColl.getNode(1)
-		# 		#print(tileColl)
-		# 		if (tileColl.getTag("TILEground") != ""):
-		# 			# highlight on mouseover
-		# 			tileInd = int(tileColl.getTag("TILEground"))
-		# 			self.hitTile = self.render.getChild(tileInd)
-		# 			self.hitTile.setTexture(self.highlightTex,1)
-				
-		# 		#print("highlighting: " + str(self.hitTile))
-		# 		#self.hitTile.set_texture(self.tileTS, self.tileHighlight, 1)
-		# 		#self.hitTile.findTexture(self.tileTS).load(self.tileHighlight)
-		# 		#print(tileInd)
+			if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
+				# sort by closest first
+				self.tpQueue.sortEntries() 
+				# find collider node and get tile via index in name
+				tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getParent()
+				#self.hitTile = tileColl.getNode(0)
+				tileInd = int(tileColl.getName().split("-")[1])
+				self.hitTile = self.tileMap.getChild(tileInd)
+				if (self.hitTile.getTag("TILEground") != ""):
+					# highlight on mouseover
+					#print("hovering over ground tile " + str(self.hitTile))
+					self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
+					u = int(self.hitTile.getTag("u"))
+					v = int(self.hitTile.getTag("v"))
+					if (not int(str(self.mapImg.getAlphaVal(u,v)),8) >> 1):
+						# pickable bit is false
+						#self.hitTile = None
+						#print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
+						self.highlightTile.setColor(1,0,0,1)
+					else:
+						self.highlightTile.setColor(1,1,1,1)
 
-	#	return task.cont
+		return task.cont
 
 	# CALLABLE FUNCTIONS/EVENTS: 		=========================
 
-	# def onMouse(self):
-	# 	if (self.clickWaiting):
-	# 		self.dialogueStep += 1
-	# 		if (self.dialogueStep < len(self.dialogue)):
-	# 			self.dialogueTextNP.node().setText(self.dialogue[self.dialogueStep])
-	# 			Wait(1)
-	# 		else:
-	# 			self.exitDialogue()
-	# 			self.clickWaiting = False
-	# 	#if(self.hitTile != None):
-	# 	#		self.hilightCard.instanceTo(self.hitTile)
+	def onMouse(self):
+		if (self.hitTile != None):
+			u = int(self.hitTile.getTag("u"))
+			v = int(self.hitTile.getTag("v"))
+			if (not int(str(self.mapImg.getAlphaVal(u,v)),8) >> 1):
+				# pickable bit is false
+				print("can't pick that tile!")
+				#self.highlightTile.doALittleWiggle()
+			else:
+				print("ONMOUSE HIT " + str(self.hitTile))
+				self.spawnTower(Vec3(self.hitTile.getX()+1.,self.hitTile.getY(),self.hitTile.getZ()))
+				self.highlightTile.setPos(0,0,-1)
+				self.highlightTile.hide()
+				#self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
+				#self.hitTile.set_color(1,0,0,1)
+			self.hitTile = None
+		#if (self.clickWaiting):
+		#	self.dialogueStep += 1
+		#	if (self.dialogueStep < len(self.dialogue)):
+		#		self.dialogueTextNP.node().setText(self.dialogue[self.dialogueStep])
+		#		Wait(1)
+		#	else:
+		#		self.exitDialogue()
+		#		self.clickWaiting = False
+
+	def readMapFromFile(self, filename):
+		mapImg = PNMImage()
+		mapImg.read(filename)
+		return mapImg
+
+	def readMapRed(self, mapImg, tileU, tileV):
+		# returns value between 0.0 and 1.0
+		return mapImg.getRed(tileU,tileV)
+
+	def readMapGreen(self, mapImg, tileU, tileV):
+		# returns a number between 0 and 255
+		return mapImg.getGreenVal(tileU,tileV)
+
+	def readMapBlue(self, mapImg, tileU, tileV):
+		# returns a number between 0 and 255. nb values refer to combinations of booleans, look at each bit individually
+		return mapImg.getBlueVal(tileU,tileV)
+
+	def readMapAlpha(self, mapImg, tileU, tileV):
+		if (not mapImg.hasAlpha()):
+			# should i replace this with an assertion or error? keeping soft for now in case of custom/test maps
+			print("INVALID MAP IMAGE READ: NO ALPHA CHANNEL IN " + str(mapImg))
+			return None
+		# returns a number between 0 and 255
+		return mapImg.getAlphaVal(tileU,tileV)
+
+	def writeMapRed(self, mapImg, tileU, tileV):
+		# returns value between 0.0 and 1.0
+		return mapImg.setRed(tileU,tileV)
+
+	def writeMapGreen(self, mapImg, tileU, tileV):
+		# returns a number between 0 and 255
+		return mapImg.setGreenVal(tileU,tileV)
+
+	def writeMapBlue(self, mapImg, tileU, tileV):
+		# returns a number between 0 and 255
+		return mapImg.setBlueVal(tileU,tileV)
+
+	def writeMapAwritelpha(self, mapImg, tileU, tileV):
+		if (not mapImg.hasAlpha()):
+			# should i replace this with an assertion or error? keeping soft for now in case of custom/test maps
+			print("INVALID MAP IMAGE WRITE: NO ALPHA CHANNEL IN " + str(mapImg))
+			return None
+		# returns a number between 0 and 255. nb values refer to combinations of booleans, look at each bit individually
+		return mapImg.setAlphaVal(tileU,tileV)
+
+	def spawnTower(self, pos):
+		print("spawning tower at " + str(pos))
 
 app = DuckBase()
 app.run()
