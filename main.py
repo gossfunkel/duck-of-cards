@@ -99,7 +99,7 @@ testing = False
 	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
 
 # TODO:
-	# = BUGFIX?: still having trouble with Func-setColor of Sequence in Enemy (!is_empty at 2030 of nodePath) MAYBE FIXED
+	# = BUGFIX: boolean data not properly read from mapImg alpha channel, pickable bit not working for pond
 	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck). n.b.
 		# pausing at the wrong time causes hundreds of dogs to spawn (!!)
 	#
@@ -804,6 +804,7 @@ class DuckOfCards(ShowBase):
 				tile.setTexture(self.pathTS, self.pathTex)
 				tile.setTexPos(self.pathTS, .25, .3, 0.)
 				tile.setTexScale(self.pathTS, .3,.37,1)
+				# TODO figure out uv coord and set green to 4 for path, alpha to 0000 
 			if ((int(tile.getName().split("-")[1]) > width * (length/2)) and (int(tile.getName().split("-")[1]) < width * (length/2 + 1))):
 				# path going up the centre of the length axis
 				#print("placing y path tile at " + str(tile.getPos()))
@@ -811,7 +812,7 @@ class DuckOfCards(ShowBase):
 				tile.setTexHpr(self.pathTS, 90,0,0)
 				tile.setTexPos(self.pathTS, -.45, .32, 0.)
 				tile.setTexScale(self.pathTS, .37,.3,1)
-		# apply decal
+				# TODO figure out uv coord and set green to 4 for path, alpha to 0000
 
 	# TASK FUNCTIONS
 	def update(self, task):
