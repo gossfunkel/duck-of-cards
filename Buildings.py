@@ -6,25 +6,21 @@ import numpy as np
 import tools
 
 class PlayerCastle():
-	def __init__(self):
+	def __init__(self) -> None:
 		model = loader.loadModel("assets/playerBase.gltf")
 		model.setScale(0.2)
-		self.node = render.attachNewNode("castleMap")
+		self.node: NodePath = render.attachNewNode("castleMap")
 		model.reparentTo(self.node)
 		self.node.setPos(0.,0.,0.)
 		self.node.setH(-45)
 		# this is a flat colour, not the textures that should be baked into the model
-		model.setColor(0.3,0.35,0.6,1.)
+		#model.setColor(0.3,0.35,0.6,1.)
 		self.node.setTag("castle", '0')
-		#self.node.setColor(0.3,0.35,0.6,1.)
 		#model.node().setIntoCollideMask(BitMask32(0x04))
 
-		#self.node.clear_material()
-		#for ts in self.node.find_all_texture_stages():
-		#	self.model.clear_texture(ts)
 		#self.node.ls()
 
-	def takeDmg(self):
+	def takeDmg(self) -> None:
 		# take damage
 		base.dmgCastle(5.0)
 		# flash red for a moment TODO don't use setColor, have a shader or something
@@ -33,17 +29,17 @@ class PlayerCastle():
 				Func(self.node.setColor,0.3,0.35,0.6,1.)).start()
 
 class Arrow():
-	def __init__(self, pos, enemyId):
+	def __init__(self, pos, enemyId) -> None:
 		self.arrowModel = base.loader.loadModel("assets/arrow2.gltf")
-		self.node = render.attachNewNode("arrow")
+		self.node: NodePath = render.attachNewNode("arrow")
 		self.arrowModel.wrtReparentTo(self.node)
 		self.arrowModel.setScale(0.06)
 		self.node.setScale(0.6)
-		self.enemy = base.enemies[int(enemyId)]
-		self.damage = 10.0
+		self.enemy: spritem.Enemy = base.enemies[int(enemyId)]
+		self.damage: float = 10.0
 		self.node.setP(30)
 		self.node.setY(-45) 
-		# modified origin for realism. 
+		# modified origin for realism
 		self.node.setPos(pos + Vec3(-.1, 0., .7))
 		self.node.lookAt(self.getTargetPos())
 		#projectileNp = render.attachNewNode(ActorNode('projectile'))
@@ -62,7 +58,7 @@ class Arrow():
 			self.despawnInt
 		).start()
 
-	def getTargetPos(self):
+	def getTargetPos(self) -> Vec3:
 		# get up-to-date position
 		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
 		p = self.enemy.node.getPos()
@@ -72,61 +68,61 @@ class Arrow():
 		p[2] += .75
 		return p
 
-	def despawn(self):
+	def despawn(self) -> None:
 		# do damage and remove
 		self.enemy.damage(self.damage)
 		self.node.removeNode()
 		ModelPool.releaseModel("assets/arrow.gltf")
 
 class Tower():
-	def __init__(self, pos):
+	def __init__(self, pos) -> None:
 		towerModel = base.loader.loadModel("assets/tower.gltf")
 		print("spawning tower at " + str(pos))
 		towerModel.setScale(0.2)
 		#towerModel.setP(90)
-		self.node = render.attachNewNode("tower")
+		self.node: NodePath = render.attachNewNode("tower")
 		towerModel.wrtReparentTo(self.node)
-		self.landPosition = pos
+		self.landPosition: Vec3 = pos
 		self.node.setPos(pos.getX(),pos.getY(),pos.getZ() + .04)
 		#self.node.setScale()
-		self.rateOfFire = 1.0
-		self.damage = 1.0
-		self.range = 5.0
-		self.cooldown = 3.0
-		self.onCD = True
+		self.rateOfFire: float = 1.0
+		self.damage: float = 1.0
+		self.range: float = 5.0
+		self.cooldown: float = 3.0
+		self.onCD: bool = True
 
-		self.vel = Vec3(0.,0.,-0.2)
+		self.vel: Vec3 = Vec3(0.,0.,-0.2)
 
 		# initialise detection of enemies in range
-		self.rangeSphere = CollisionSphere(0, 0, 0, self.range)
+		self.rangeSphere: CollisionSphere = CollisionSphere(0, 0, 0, self.range)
 		rcnode = CollisionNode(str(self.node) + '-range-cnode')
 		rcnode.setFromCollideMask(BitMask32(0x02))
-		self.rangeColliderNp = self.node.attachNewNode(rcnode)
+		self.rangeColliderNp: NodePath = self.node.attachNewNode(rcnode)
 		self.rangeColliderNp.node().addSolid(self.rangeSphere)
 		#self.rangeColliderNp.show()
 
-		self.enemyDetector = CollisionTraverser(str(self.node) + '-enemy-detector')
-		self.detectorQueue = CollisionHandlerQueue()
+		self.enemyDetector: CollisionTraverser = CollisionTraverser(str(self.node) + '-enemy-detector')
+		self.detectorQueue: CollisionHandlerQueue = CollisionHandlerQueue()
 		self.enemyDetector.addCollider(self.rangeColliderNp, self.detectorQueue)
 		#self.enemyDetector.showCollisions(base.enemyModelNd)
 
-		self.cdInt = Wait(self.cooldown/self.rateOfFire)
-		self.cdSeq = Sequence(self.cdInt,Func(self.cdOFF))
-		self.scanSeq = Sequence(Func(self.update))
+		self.cdInt: Interval = Wait(self.cooldown/self.rateOfFire)
+		self.cdSeq: Sequence = Sequence(self.cdInt,Func(self.cdOFF))
+		self.scanSeq: Sequence = Sequence(Func(self.update))
 		self.cdSeq.start()
 		self.scanSeq.loop()
 
 		base.taskMgr.add(self.land, str(self.node)+"_land", taskChain='default')
 		# update task replaced with sequence for pausability
 
-	def land(self, task):
-		dist = self.node.getPos() - self.landPosition
-		sumDist = np.sqrt(dist[0]*dist[0] + dist[1]*dist[1] + dist[2]*dist[2])
+	def land(self, task) -> int:
+		dist: Vec3 = self.node.getPos() - self.landPosition
+		sumDist: float = np.sqrt(dist[0]*dist[0] + dist[1]*dist[1] + dist[2]*dist[2])
 		#print("dist:" + str(dist))
 		if (sumDist < tools.epsilon and sumDist > 0):
 			self.node.setPos(self.landPosition)
 			# TODO: play clunk noise
-			print("tower landed at " + str(self.node.getPos()))
+			#print("tower landed at " + str(self.node.getPos()))
 			return task.done
 		else:
 			pos, self.vel = tools.calcDampedSHM(self.node.getPos(),self.vel,self.landPosition,globalClock.getDt(),15., .99)
@@ -134,7 +130,7 @@ class Tower():
 			#print("pos: " + str(self.node.getPos()) + " | vel: " + str(self.vel))
 			return task.cont
 
-	def update(self):
+	def update(self) -> None:
 		if not self.onCD: self.attackScan()
 
 	#def update(self, task):
@@ -145,13 +141,13 @@ class Tower():
 		#	base.taskMgr.getTasksNamed(str(self.node)+"_update").pause() 
 		#   ^ this pause method isn't a thing. using a sequence instead of the task
 
-	def cdOFF(self):
+	def cdOFF(self) -> bool:
 		if not self.onCD: return 1
 		else: 
 			self.onCD = False
 			return 0
 
-	def attackScan(self):
+	def attackScan(self) -> None:
 		# check for intersecting collisionsolids
 		self.enemyDetector.traverse(base.enemyModelNd)
 		#print("scanning...")
@@ -174,6 +170,6 @@ class Tower():
 			self.onCD = True
 			self.cdSeq.start()
 
-	def launchProjectiles(self, enemy):
-		print("firing at " + enemy)
+	def launchProjectiles(self, enemy) -> None:
+		#print("firing at " + enemy)
 		newArrow = Arrow(self.node.getPos(), enemy)

@@ -17,7 +17,7 @@ from math import sqrt
 import SpriteModel as spritem
 import Buildings
 
-config_vars = """
+config_vars: str = """
 win-size 1200 800
 show-frame-rate-meter 1
 //hardware-animated-vertices true
@@ -34,10 +34,10 @@ loadPrcFileData("", config_vars)
 
 # GLOBAL VARIABLES
 
-castleHP = 100
-playerGold = 10
-waveNum = 0
-testing = False
+castleHP: float = 100.0
+playerGold: int = 10
+waveNum: int = 0
+testing: bool = True
 
 # GAME OPENING / TUTORIAL
 	# <intro dialogue sequence>
@@ -143,31 +143,31 @@ testing = False
 	# - distribution build
 
 class UI():
-	def __init__(self):
+	def __init__(self) -> None:
 		# show remaining hit points
-		self.castleHPdisplay = TextNode('castle HP display')
+		self.castleHPdisplay: TextNode = TextNode('castle HP display')
 		self.castleHPdisplay.setText(str(castleHP))
 		self.castleHPdisplay.setFrameColor(0, 0, 1, 1)
 		self.castleHPdisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
-		self.castleTextNP = aspect2d.attachNewNode(self.castleHPdisplay)
+		self.castleTextNP: NodePath = aspect2d.attachNewNode(self.castleHPdisplay)
 		self.castleTextNP.setScale(0.1)
 		self.castleTextNP.setPos(-1.4,0., 0.85)
 
 		# show current enemy wave
-		self.waveDisplay = TextNode('wave number display')
+		self.waveDisplay: TextNode = TextNode('wave number display')
 		self.waveDisplay.setText("Wave: " + str(waveNum))
 		self.waveDisplay.setFrameColor(1, 0, 1, 1)
 		self.waveDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
-		self.waveDisplayNP = aspect2d.attachNewNode(self.waveDisplay)
+		self.waveDisplayNP: NodePath = aspect2d.attachNewNode(self.waveDisplay)
 		self.waveDisplayNP.setScale(0.05)
 		self.waveDisplayNP.setPos(-0.9,0., 0.9)
 
 		# show player gold
-		self.goldDisplay = TextNode('player gold display')
+		self.goldDisplay: TextNode = TextNode('player gold display')
 		self.goldDisplay.setText("GP: " + str(playerGold))
 		self.goldDisplay.setFrameColor(1, 1, 0, 1)
 		self.goldDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
-		self.goldDisplayNP = aspect2d.attachNewNode(self.goldDisplay)
+		self.goldDisplayNP: NodePath = aspect2d.attachNewNode(self.goldDisplay)
 		self.goldDisplayNP.setScale(0.05)
 		self.goldDisplayNP.setPos(-0.9,0., 0.82)
 
@@ -243,7 +243,7 @@ class UI():
 		quitBtn	= DirectButton(text="QUIT", command=base.quit,
 										pos=(-0.5, 0, -2.), parent=self.playButton, scale=0.9)
 
-	def update(self):
+	def update(self) -> None:
 		# update hp display
 		self.castleHPdisplay.setText(str(castleHP) + "hp")
 		if castleHP < 25:
@@ -254,7 +254,7 @@ class UI():
 		# update player gold points display
 		self.goldDisplay.setText("GP: " + str(playerGold))
 
-	def drawText(self, dialogueString):
+	def drawText(self, dialogueString) -> NodePath:
 		# generate text
 		dialogueText = TextNode('dialogueText')
 		# dialogueText.setFont(TextFont)
@@ -276,7 +276,7 @@ class UI():
 
 		return dialogueTextNP
 
-	def popupText(self, textString, duration):
+	def popupText(self, textString, duration) -> NodePath:
 		# generate text
 		popupText = TextNode('popupText-'+str(duration)+'s')
 		# popupText.setFont(TextFont)
@@ -309,29 +309,30 @@ class UI():
 	# 	cdNP.setPos(pos)
 
 class DialogueState():
-	def __init__(self, step, seqs):
+	def __init__(self, step, seqs) -> None:
 		assert isinstance(seqs, Sequence), f'Dialogue state not passed list at construction as required!'
 		self.stateSequence = seqs
 		self.step = step
 
 class GamestateFSM(FSM):
-	def __init__(self): 
+	def __init__(self) -> None: 
 		FSM.__init__(self, 'GamestateFSM') # must be called when overloading
 
 		# enums-style dict of enemy spawn positions
 		# n.b. the directions are named for which way the model is *facing*
-		self.spawner = {1: Vec3(-18.,18.,0.),  	# (top left)
+		self.spawner: dict[int, Vec3] = {1: Vec3(-18.,18.,0.),  	# (top left)
 						2: Vec3(18.,18.,0.),  	# (top right)
 						3: Vec3(18.,-18.,0.), 	# (bottom right)
 						4: Vec3(-18.,-18.,0.)} 	# (bottom left)
 
 		# setup dialogue
-		self.inDialogue = False
-		self.clickWaiting = False
+		self.inDialogue: bool = False
+		self.clickWaiting: bool = False
 
 		#self.choosingTile = False
 		# spawn waves 								TODO - figure out spawning from both sides
 		#													without incrementing waveNum twice:
+		self.waveSchedule: Sequence
 		if testing:
 			self.waveSchedule = Sequence(
 				Wait(5.0),
@@ -367,7 +368,7 @@ class GamestateFSM(FSM):
 
 	# main Gameplay state	
 
-	def enterGameplay(self):
+	def enterGameplay(self) -> None:
 		# resume sequences 
 		self.waveSchedule.resume()
 		if (base.spawnSeq != None):
@@ -385,7 +386,7 @@ class GamestateFSM(FSM):
 
 	# Pause menu
 
-	def enterPause(self):
+	def enterPause(self) -> None:
 		# pause sequences
 		self.waveSchedule.pause()
 		if (base.spawnSeq != None):
@@ -405,7 +406,7 @@ class GamestateFSM(FSM):
 		base.ui.playButton.show()
 		# show pause menu
 
-	def exitPause(self):
+	def exitPause(self) -> None:
 		# force hide pause menu
 		base.ui.pauseButton.show()
 		base.ui.playButton.hide()
@@ -416,7 +417,7 @@ class GamestateFSM(FSM):
 
 	# Card Menu
 
-	def enterCardMenu(self):
+	def enterCardMenu(self) -> None:
 		# pause sequences
 		self.waveSchedule.pause()
 		if (base.spawnSeq != None):
@@ -434,7 +435,7 @@ class GamestateFSM(FSM):
 		base.ui.duckbutt.hide()
 		base.ui.exitButton.show()
 
-	def exitCardMenu(self):
+	def exitCardMenu(self) -> None:
 		if not base.ui.cardMenuScreen.isHidden():
 			base.ui.cardMenuScreen.hide()
 		base.ui.duckbutt.show()
@@ -443,7 +444,7 @@ class GamestateFSM(FSM):
 
 	# Pick Tower
 
-	def enterPickTower(self): 
+	def enterPickTower(self) -> None: 
 		# enable toggle to tell updates to listen for clicks and run mouseray collider
 		# maybe start a task for the tower picker?
 		self.waveSchedule.pause()
@@ -456,14 +457,14 @@ class GamestateFSM(FSM):
 		# make the highlight for the tile picker visible
 		base.highlightTile.show()
 
-	def exitPickTower(self):
+	def exitPickTower(self) -> None:
 		#self.choosingTile = False
 		base.highlightTile.hide()
 		pass
 
 	# Game Over
 
-	def enterGameOver(self):
+	def enterGameOver(self) -> None:
 		# pause sequences
 		self.waveSchedule.pause()
 		for enemy in base.enemies:
@@ -471,13 +472,14 @@ class GamestateFSM(FSM):
 		if base.ui.gameOverScreen.isHidden():
 			base.ui.gameOverScreen.show()
 
-	def exitGameOver(self):
-		# reset the game
+	def exitGameOver(self) -> None:
+		# TODO: implement resetting the game
+		# probably will need to reload the base.mapImg PNMImage
 		pass
 
 	# Dialogue
 
-	def enterDialogue(self):
+	def enterDialogue(self) -> None:
 		# pause sequences
 		self.waveSchedule.pause()
 		if (base.spawnSeq != None):
@@ -531,7 +533,7 @@ class GamestateFSM(FSM):
 		#wait for user to click
 		self.clickWaiting = True
 
-	def exitDialogue(self):
+	def exitDialogue(self) -> None:
 		# remove the dialogue box
 		self.dialogueTextNP.removeNode()
 		self.fadeBoxBack.removeNode()
@@ -547,15 +549,15 @@ class GamestateFSM(FSM):
 		self.inDialogue = False
 		self.clickWaiting = False
 
-	def setClickWaitingFalse(self):
+	def setClickWaitingFalse(self) -> None:
 		self.clickWaiting = False
 
-	def stepDialogue(self):
+	def stepDialogue(self) -> None:
 		self.dialogueTextNP.node().setText(base.dialogue[self.dialogueStep])
 		# TODO: figure out how to come out of first dialogue into tower picker tutorial
 
 class DuckOfCards(ShowBase):
-	def __init__(self):
+	def __init__(self) -> None:
 		ShowBase.__init__(self)
 
 		# disable default panda3d mouse camera controls
@@ -567,11 +569,11 @@ class DuckOfCards(ShowBase):
 		self.set_background_color(0.5,0.6,0.85,1.)
 
 		# create sunlight
-		self.dirLight = DirectionalLight('dirLight')
+		self.dirLight: DirectionalLight = DirectionalLight('dirLight')
 		self.dirLight.setColorTemperature(5800)
 		self.dirLight.setShadowCaster(True, 512, 512)
 		#self.dirLight.setAttenuation(1,0,1)
-		self.dirLightNp = render.attachNewNode(self.dirLight)
+		self.dirLightNp: NodePath = render.attachNewNode(self.dirLight)
 		self.dirLightNp.setHpr(35,20,-60)
 		render.setLight(self.dirLightNp)
 
@@ -586,22 +588,22 @@ class DuckOfCards(ShowBase):
 		#self.lens.setNearFar(-40,40)
 		#self.camera.node().setLens(self.lens)
 
-		width = 40
-		length = 40
+		width: int = 40
+		length: int = 40
 		self.createMap(width,length)
 
 		#self.tileMap.ls()
 
 		# n.b. this is part of the opening cutscene as a placeholder for the final dialogue data
-		self.dialogue = ["QUACK! I mean QUICK! Attackers are at the gates!\nThere's no time to explain- you, traveller!",
+		self.dialogue: list[str] = ["QUACK! I mean QUICK! Attackers are at the gates!\nThere's no time to explain- you, traveller!",
 							"> ...", "Yes, you! What's your name?", 
 							"Wait- there's no TIME! Take this;\nit is one of my fine and valuable magic cards.",
 							"It will summon a magical tower to defend\nthe innocent ducks of the pond\nwherever you place it.",
 							"Place it carefully and fight back these\nmerciless attackers who would make\nMINCEMEAT of us!",
 							"What are you waiting for?!\nBEGONE! BWAAACK- WACK wack..."]
-		self.dialogueStates = [DialogueState(3,Sequence(Func(self.offerCard))),
+		self.dialogueStates: list[DialogueState] = [DialogueState(3,Sequence(Func(self.offerCard))),
 								DialogueState(4,Sequence(Func(self.takeOfferedCard)))]
-		self.textCardMaker = CardMaker('textScreen')
+		self.textCardMaker: CardMaker = CardMaker('textScreen')
 		self.textCardMaker.setHasUvs(1)
 		#self.textCardMaker.clearColor()
 
@@ -609,12 +611,12 @@ class DuckOfCards(ShowBase):
 		self.placePaths(width,length)
 
 		# initialise the tile picker
-		self.tilePicker = CollisionTraverser()
-		self.tpQueue = CollisionHandlerQueue()
+		self.tilePicker: CollisionNode = CollisionTraverser()
+		self.tpQueue: CollisionHandlerQueue = CollisionHandlerQueue()
 		tilePickerNode = CollisionNode('tilePicker-node')
 		tilePickerNP = camera.attachNewNode(tilePickerNode)
 		tilePickerNode.setFromCollideMask(BitMask32(0x01))
-		self.tilePickerRay = CollisionRay()
+		self.tilePickerRay: CollisionRay = CollisionRay()
 		tilePickerNode.addSolid(self.tilePickerRay)
 		self.tilePicker.addCollider(tilePickerNP, self.tpQueue)
 		self.hitTile = None
@@ -623,7 +625,7 @@ class DuckOfCards(ShowBase):
 		#tpNp.show()
 
 		# create a player castle object
-		self.castle = Buildings.PlayerCastle()
+		self.castle: Buildings.PlayerCastle = Buildings.PlayerCastle()
 		# self.cPickerRay = CollisionRay()
 		# self.castlePicker = CollisionTraverser()
 		# self.castleQueue = CollisionHandlerQueue()
@@ -634,14 +636,14 @@ class DuckOfCards(ShowBase):
 		# self.castlePicker.addCollider(cscNp, self.castleQueue)
 
 		# initialise tower tracking
-		self.towerCount = 0
-		self.towers = []
+		self.towerCount: int = 0
+		self.towers: list[Buildings.Tower] = []
 
 		# initialise enemy models & data
-		self.enemyCount = 0
-		self.enemies = []
-		self.spawnSeq = None
-		self.enemyModelNd = render.attachNewNode("enemy-models")
+		self.enemyCount: int = 0
+		self.enemies: list[spritem.Enemy] = []
+		self.spawnSeq: Sequence = None
+		self.enemyModelNd: NodePath = render.attachNewNode("enemy-models")
 		#self.enemyModel.reparentTo(render)
 		#print(self.enemyModel.findAllMaterials())
 
@@ -650,10 +652,10 @@ class DuckOfCards(ShowBase):
 		randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(0.,-2.,0.), .1)
 
 		# initialise the finite-state machine
-		self.fsm = GamestateFSM()
+		self.fsm: GamestateFSM = GamestateFSM()
 
 		# initialise the UI manager
-		self.ui = UI()
+		self.ui: UI = UI()
 
 		# keyboard controls to move isometrically
 		self.accept("arrow_left", self.move, ["left"])
@@ -684,28 +686,28 @@ class DuckOfCards(ShowBase):
 			self.fsm.demand('Gameplay')
 
 	# LOAD-IN
-	def createMap(self, width, length): 	# generate pickable tiles to place towers on
+	def createMap(self, width, length) -> PNMImage: 	# generate pickable tiles to place towers on
 		# generate ground tile model and instance, creating node map
-		self.mapImg = PNMImage(100,100,4,255)
+		self.mapImg: PNMImage = PNMImage(100,100,4,255)
 		self.mapImg.fill(1.0,0.0,0.0)
 
-		self.tileMap = render.attachNewNode("tileMap")
+		self.tileMap: NodePath = render.attachNewNode("tileMap")
 		# self.lakeTiles = self.render.attachNewNode("lakeTiles")
 
-		self.tileTS = TextureStage('tileTS')
+		self.tileTS: TextureStage = TextureStage('tileTS')
 		self.tileTS.setMode(TextureStage.M_replace)
 
-		width = int(width)
-		length = int(length)
+		width: int = int(width)
+		length: int = int(length)
 
 		# each tile is assigned a unique index, locally referred to as tileIndex:
-		tileIndex = 0
+		tileIndex: int = 0
 		# a random spawn point for the duck pond is generated somewhere in the middle half area:
-		pondSpawnPoint = [randint(int(width/4),width-int(width/4)), randint(int(length/4),length-int(length/4))]
+		pondSpawnPoint: list[int] = [randint(int(width/4),width-int(width/4)), randint(int(length/4),length-int(length/4))]
 		print("pond spawn generation: " + str(pondSpawnPoint))
 
-		self.tile_maker = CardMaker('tile-')
-		self.tileScaleFactor = sqrt(2) # pythagoras; turning squares sideways makes triangles maybe?
+		self.tile_maker: CardMaker = CardMaker('tile-')
+		self.tileScaleFactor: float = sqrt(2) # pythagoras; turning squares sideways makes triangles maybe?
 		self.tile_maker.setFrame(0.,self.tileScaleFactor,0.,self.tileScaleFactor)
 		self.tile_maker.setHasUvs(1)
 		self.tile_maker.clearColor()
@@ -731,7 +733,7 @@ class DuckOfCards(ShowBase):
 		self.highlightTex.setWrapV(Texture.WM_clamp)
 		self.highlightTex.setMagfilter(SamplerState.FT_nearest)
 		self.highlightTex.setMinfilter(SamplerState.FT_nearest)
-		self.highlightTile = self.render.attachNewNode(self.tile_maker.generate())
+		self.highlightTile: NodePath = self.render.attachNewNode(self.tile_maker.generate())
 		self.highlightTile.setTransparency(1)
 		self.highlightTile.setName("highlightTile")
 		self.highlightTile.setHpr(0., -90., 45.)
@@ -742,7 +744,7 @@ class DuckOfCards(ShowBase):
 		for u in range(width) :
 			for v in range(length):
 				# initialise a tile node, position in grid, and rotation 45 degrees from the axes
-				tile = self.tileMap.attachNewNode(self.tile_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
+				tile: NodePath = self.tileMap.attachNewNode(self.tile_maker.generate())#"tileGRASS"+str(x)+":"+str(y)+"-"+str(tileInd)
 				tile.setName("tile-"+str(tileIndex))
 				tile.setPos(u-v - 1.,u+v-length,0.) # x = u - v - 1 ; y = u + v - length
 				tile.setHpr(0., -90., 45.)
@@ -783,6 +785,9 @@ class DuckOfCards(ShowBase):
 		self.mapImg.setAlphaVal(int(width/2),int(length/2),int(1)) # 0001 - does not collide, not pickable, not corrupted, damageable friendly structure
 				
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
+
+		# then return the tile map data
+		return self.mapImg
 
 	def placePaths(self, width, length):
 		# set up texture and stage for paths
@@ -828,8 +833,9 @@ class DuckOfCards(ShowBase):
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self):
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; check if clicking a pickable tile
-			u = int(self.hitTile.getTag("u"))
-			v = int(self.hitTile.getTag("v"))
+			# u and v are tile coordinates in terms of tile grid
+			u: int = int(self.hitTile.getTag("u"))
+			v: int = int(self.hitTile.getTag("v"))
 			print(int(str(self.mapImg.getAlphaVal(u,v))) >> 1)
 			if (not int(str(self.mapImg.getAlphaVal(u,v))) >> 1):
 				# pickable bit is false: give user feedback
