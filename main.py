@@ -130,6 +130,7 @@ testing: bool = True
 	# - procedural spawning of walls and building models between towers and castle
 	# - 'evil mode' game state transition, general colour management and filtering shaders
 	# - game menu, splash screen, and loading screens
+	# - particle atmosphere: random leaves, dots, streaks, rain etc
 	# - fill out assets:
 		# -> enemies
 		# -> allies
@@ -501,7 +502,6 @@ class GamestateFSM(FSM):
 		# 		It needs to progress through the game linearly, and not get stuck in this state
 
 		# generate a black fade from the bottom of the screen for the character background
-		base.textCardMaker.setFrameFullscreenQuad()
 		self.fadeBoxBack = render2d.attachNewNode(base.textCardMaker.generate())
 		self.fadeBoxBack.setTransparency(1)
 		fadeShader = Shader.load(Shader.SL_GLSL,
@@ -605,6 +605,7 @@ class DuckOfCards(ShowBase):
 								DialogueState(4,Sequence(Func(self.takeOfferedCard)))]
 		self.textCardMaker: CardMaker = CardMaker('textScreen')
 		self.textCardMaker.setHasUvs(1)
+		self.textCardMaker.setFrameFullscreenQuad()
 		#self.textCardMaker.clearColor()
 
 		# generate path textures and apply to tiles
@@ -789,7 +790,7 @@ class DuckOfCards(ShowBase):
 		# then return the tile map data
 		return self.mapImg
 
-	def placePaths(self, width, length):
+	def placePaths(self, width, length) -> PNMImage: 	# TODO: load from self.mapImg
 		# set up texture and stage for paths
 		self.pathTex = loader.loadTexture("assets/road-tile.png")
 		self.pathTex.set_format(Texture.F_srgb_alpha)
@@ -820,7 +821,7 @@ class DuckOfCards(ShowBase):
 				# TODO figure out uv coord and set green to 4 for path, alpha to 0000
 
 	# TASK FUNCTIONS
-	def update(self, task):
+	def update(self, task) -> int:
 		dt = globalClock.getDt()
 
 		if not (castleHP > 0):
@@ -830,8 +831,41 @@ class DuckOfCards(ShowBase):
 
 		return Task.cont
 
+	# ray-based tile picker for placing down towers
+	def towerPlaceTask(self, task) -> int:
+		if (self.fsm.state == 'PickTower'): # if the tower placer is on
+			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
+				# get mouse position and traverse tileMap with the pickerRay
+				mousePos = base.mouseWatcherNode.getMouse()
+				self.tilePickerRay.setFromLens(base.camNode, mousePos.x, mousePos.y)
+				self.tilePicker.traverse(self.tileMap)
+
+				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
+					# sort by closest first
+					self.tpQueue.sortEntries() 
+					# find collider node and get tile via index in name
+					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getParent()
+					#self.hitTile = tileColl.getNode(0)
+					tileInd = int(tileColl.getName().split("-")[1])
+					self.hitTile = self.tileMap.getChild(tileInd)
+					#if (self.hitTile.getTag("TILEground") != ""):
+					# highlight on mouseover
+					#print("hovering over ground tile " + str(self.hitTile))
+					self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
+					u = int(self.hitTile.getTag("u"))
+					v = int(self.hitTile.getTag("v"))
+					if (not int(self.mapImg.getAlphaVal(u,v)) >> 1):
+						# pickable bit is false
+						#self.hitTile = None
+						#print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
+						self.highlightTile.setColor(1,0,0,1)
+					else:
+						self.highlightTile.setColor(1,1,1,1)
+
+		return Task.cont
+
 	# respond to left mouseclick (from Gameplay state)
-	def onMouse(self):
+	def onMouse(self) -> None:
 		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; check if clicking a pickable tile
 			# u and v are tile coordinates in terms of tile grid
 			u: int = int(self.hitTile.getTag("u"))
@@ -894,13 +928,13 @@ class DuckOfCards(ShowBase):
 					self.fsm.demand('PickTower')
 					self.fsm.setClickWaitingFalse()
 
-	def giveGold(self, amount):
+	def giveGold(self, amount) -> int:
 		global playerGold
 		playerGold += int(amount)
 		return playerGold
 
 	# camera movement function (step around by blocks of 1x1)
-	def move(self, direction):
+	def move(self, direction) -> None:
 		if direction == 'left':
 			self.camera.setPos(self.camera.getPos() + Vec3(-1,0,0))
 		elif direction == 'right':
@@ -919,46 +953,14 @@ class DuckOfCards(ShowBase):
 		elif direction == 'zoomOut':
 			#self.camera.setScale(self.camera.getScale()*1.2)
 			self.camera.setPos(self.camera.getPos() + Vec3(0,-1,1))
-
-	# ray-based tile picker for placing down towers
-	def towerPlaceTask(self, task):
-		if (self.fsm.state == 'PickTower'): # if the tower placer is on
-			if (self.mouseWatcherNode.hasMouse()): # condition to protect from NaN when offscreen
-				# get mouse position and traverse tileMap with the pickerRay
-				mousePos = base.mouseWatcherNode.getMouse()
-				self.tilePickerRay.setFromLens(base.camNode, mousePos.x, mousePos.y)
-				self.tilePicker.traverse(self.tileMap)
-
-				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
-					# sort by closest first
-					self.tpQueue.sortEntries() 
-					# find collider node and get tile via index in name
-					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getParent()
-					#self.hitTile = tileColl.getNode(0)
-					tileInd = int(tileColl.getName().split("-")[1])
-					self.hitTile = self.tileMap.getChild(tileInd)
-					#if (self.hitTile.getTag("TILEground") != ""):
-					# highlight on mouseover
-					#print("hovering over ground tile " + str(self.hitTile))
-					self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
-					u = int(self.hitTile.getTag("u"))
-					v = int(self.hitTile.getTag("v"))
-					if (not int(str(self.mapImg.getAlphaVal(u,v))) >> 1):
-						# pickable bit is false
-						#self.hitTile = None
-						#print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
-						self.highlightTile.setColor(1,0,0,1)
-					else:
-						self.highlightTile.setColor(1,1,1,1)
-
-		return Task.cont
 	
-	def spawnEnemy(self, pos): 				# spawn an individual creep
+	def spawnEnemy(self, pos) -> spritem.Enemy: 				# spawn an individual creep
 		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, 1.)
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
+		return newEnemy
 
-	def spawnEnemyWave(self, num, pos): 	# spawn a wave of creeps
+	def spawnEnemyWave(self, num, pos) -> Sequence: 	# spawn a wave of creeps
 		global waveNum
 		waveNum += 1
 
@@ -974,13 +976,14 @@ class DuckOfCards(ShowBase):
 			self.spawnSeq.append(Wait(2.5))
 		self.spawnSeq.append(Func(self.resetSpawnSeq))
 		self.spawnSeq.start()
+		return self.spawnSeq
 
-	def resetSpawnSeq(self):
+	def resetSpawnSeq(self) -> None:
 		# this method protects against rushing waves by spamming pause and resuming 
 		# 	this sequence when it persists after spawning the wave
 		self.spawnSeq = None
 
-	def spawnTower(self, pos):
+	def spawnTower(self, pos) -> Buildings.Tower:
 		#pos = pos - Vec3(1.5,1.5,0)
 		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
 		newTower = Buildings.Tower(pos)
@@ -988,17 +991,18 @@ class DuckOfCards(ShowBase):
 		self.towers.append(newTower)
 		return newTower
 
-	def buyTower(self):
+	def buyTower(self) -> bool:
 		global playerGold
 		if playerGold >= 10:
 			playerGold -= 10
 			self.fsm.demand('PickTower')
+			return True
 		else:
 			# TODO: show hoverover tip that you can't afford this card
 			self.ui.popupText("broke bitch",2)
-			pass
+			return False
 
-	def offerCard(self):
+	def offerCard(self) -> None:
 		#self.fsm.setClickWaitingFalse()
 		newTowerCM = CardMaker('newTowerCard')
 		newTowerCM.setFrame(-0.5,0.,-0.605,0.)
@@ -1010,23 +1014,26 @@ class DuckOfCards(ShowBase):
 		newTowerCTex.set_format(Texture.F_srgb_alpha)
 		self.newTowerCard.setTexture(newTowerCTex)
 
-	def takeOfferedCard(self):
+	def takeOfferedCard(self) -> None:
 		# TODO: add a sexy, sparkly animation for taking the card
 		self.newTowerCard.removeNode()
 
-	def startGame(self): 	# remove all towers, enemies etc and prepare the game start-state
+	def startGame(self) -> bool: 	# remove all towers, enemies etc and prepare the game start-state
 		global waveNum, playerGold, castleHP
 		
 		waveNum = 0
 		playerGold = 0
 		castleHP = 100
 
-	def dmgCastle(self, dmg):
+		return True # all reset succesfully TODO test
+
+	def dmgCastle(self, dmg) -> None:
 		global castleHP
 		if testing: print("Castle taking " + str(dmg) + " damage!")
 		castleHP -= dmg
 
-	def quit(self): 		# exit the game in a reasonable fashion
+	def quit(self) -> None: 		# exit the game in a reasonable fashion
+		print("Bye bye! quack quack quack...")
 		self.fsm.cleanup()
 		base.userExit()
 
