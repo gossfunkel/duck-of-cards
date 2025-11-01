@@ -798,27 +798,34 @@ class DuckOfCards(ShowBase):
 		self.pathTS.setMode(TextureStage.MDecal)
 
 		# find appropriate tile to decal
-		# TODO replace this with a wee path budget to spend and a random walk algorithm to spend it
+		# TODO replace this algorithm with a wee path budget to spend and a random walk algorithm to spend it
 		for tile in self.tileMap.children: # currently covers the cardinal directions
 			#print("path checking " + str(int(tile.getName().split("-")[1])))
-			if (int(tile.getName().split("-")[1]) == (width * length/2 + width/2)):
+			u = int(tile.getTag("u"))
+			v = int(tile.getTag("v"))
+			index = int(tile.getName().split("-")[1])
+			if (index == (width * length/2 + width/2)):
 				# don't put a path on the centre tile (that's where the castle goes)
 				continue
-			if (((int(tile.getName().split("-")[1]))%width) == width/2):
+			if ((index%width) == width/2):
 				# path going up the centre of the width axis
 				#print("placing x path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
 				tile.setTexPos(self.pathTS, .25, .3, 0.)
 				tile.setTexScale(self.pathTS, .3,.37,1)
-				# TODO figure out uv coord and set green to 4 for path, alpha to 0000 
-			if ((int(tile.getName().split("-")[1]) > width * (length/2)) and (int(tile.getName().split("-")[1]) < width * (length/2 + 1))):
+				# set mapImg green to 4 for path tile type, alpha to 0000 (does not collide, not pickable, not corrupted, not damageable)
+				self.mapImg.setGreenVal(u,v,4)
+				self.mapImg.setAlphaVal(u,v,0b0000)
+			if ((index > width * (length/2)) and (index < width * (length/2 + 1))):
 				# path going up the centre of the length axis
 				#print("placing y path tile at " + str(tile.getPos()))
 				tile.setTexture(self.pathTS, self.pathTex)
 				tile.setTexHpr(self.pathTS, 90,0,0)
 				tile.setTexPos(self.pathTS, -.45, .32, 0.)
 				tile.setTexScale(self.pathTS, .37,.3,1)
-				# TODO figure out uv coord and set green to 4 for path, alpha to 0000
+				# set mapImg green to 4 for path tile type, alpha to 0000 (does not collide, not pickable, not corrupted, not damageable)
+				self.mapImg.setGreenVal(u,v,4)
+				self.mapImg.setAlphaVal(u,v,0b0000)
 
 	# TASK FUNCTIONS
 	def update(self, task) -> int:
@@ -854,8 +861,8 @@ class DuckOfCards(ShowBase):
 					self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
 					u = int(self.hitTile.getTag("u"))
 					v = int(self.hitTile.getTag("v"))
-					print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
-					if (self.mapImg.getAlphaVal(u,v) & 0b0100):
+					#print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
+					if (self.mapImg.getAlphaVal(u,v) & 0b0100): # mask bits other than pickable bit
 						self.highlightTile.setColor(1,1,1,1)
 					else:
 						# pickable bit is false
@@ -871,7 +878,7 @@ class DuckOfCards(ShowBase):
 			u: int = int(self.hitTile.getTag("u"))
 			v: int = int(self.hitTile.getTag("v"))
 			#print(int(self.mapImg.getAlphaVal(u,v)))
-			if (self.mapImg.getAlphaVal(u,v) & 0b0100):
+			if (self.mapImg.getAlphaVal(u,v) & 0b0100): # mask bits other than pickable bit
 				# tile is pickable: place tower and exit tile picker state
 				#print("ONMOUSE HIT " + str(u) + ", " + str(v))
 				self.spawnTower(Vec3(self.hitTile.getX()+1.,self.hitTile.getY(),self.hitTile.getZ()))
