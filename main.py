@@ -689,7 +689,7 @@ class DuckOfCards(ShowBase):
 	# LOAD-IN
 	def createMap(self, width, length) -> PNMImage: 	# generate pickable tiles to place towers on
 		# generate ground tile model and instance, creating node map
-		self.mapImg: PNMImage = PNMImage(100,100,4,255)
+		self.mapImg: PNMImage = PNMImage(width,length,4,255)
 		self.mapImg.fill(1.0,0.0,0.0)
 
 		self.tileMap: NodePath = render.attachNewNode("tileMap")
@@ -768,22 +768,22 @@ class DuckOfCards(ShowBase):
 					print("pond created at " + str(u) + ", " + str(v))
 					tile.setTexture(self.tileTS, self.pondTex)
 					tile.setTag("TILEpond",str(tileIndex))
-					self.mapImg.setGreenVal(u,v,int(2)) # type 2: pond
-					self.mapImg.setBlueVal(u,v,int(0)) # empty upgrade index
-					self.mapImg.setAlphaVal(u,v,int(8)) # 1000 - collides, not pickable, not corrupted, not damageable friendly structure
+					self.mapImg.setGreenVal(u,v,2) # type 2: pond
+					self.mapImg.setBlueVal(u,v,0) # empty upgrade index
+					self.mapImg.setAlphaVal(u,v,0b1000) # collides, not pickable, not corrupted, not damageable friendly structure
 					#tile.setColor(0,1,0,1)
 				else:
 					# set as a regular grass tile
 					tile.setTexture(self.tileTS, self.groundTex)
 					tile.setTag("TILEground",str(tileIndex))
-					self.mapImg.setGreenVal(u,v,int(1)) # type 1: grass
-					self.mapImg.setBlueVal(u,v,int(0)) # empty upgrade index
-					self.mapImg.setAlphaVal(u,v,int(4)) # 0100 - does not collide, pickable, not corrupted, not damageable friendly structure
+					self.mapImg.setGreenVal(u,v,1) # type 1: grass
+					self.mapImg.setBlueVal(u,v,0) # empty upgrade index
+					self.mapImg.setAlphaVal(u,v,0b0100) # does not collide, pickable, not corrupted, not damageable friendly structure
 				tileIndex += 1
 
 		# define castle tile in centre
-		self.mapImg.setGreenVal(int(width/2),int(length/2),int(3)) # type 3: castle
-		self.mapImg.setAlphaVal(int(width/2),int(length/2),int(1)) # 0001 - does not collide, not pickable, not corrupted, damageable friendly structure
+		self.mapImg.setGreenVal(int(width/2),int(length/2),3) # type 3: castle
+		self.mapImg.setAlphaVal(int(width/2),int(length/2),0b0001) # does not collide, not pickable, not corrupted, damageable friendly structure
 				
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
 
@@ -854,13 +854,13 @@ class DuckOfCards(ShowBase):
 					self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
 					u = int(self.hitTile.getTag("u"))
 					v = int(self.hitTile.getTag("v"))
-					if (not int(self.mapImg.getAlphaVal(u,v)) >> 1):
+					print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
+					if (self.mapImg.getAlphaVal(u,v) & 0b0100):
+						self.highlightTile.setColor(1,1,1,1)
+					else:
 						# pickable bit is false
 						#self.hitTile = None
-						#print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
 						self.highlightTile.setColor(1,0,0,1)
-					else:
-						self.highlightTile.setColor(1,1,1,1)
 
 		return Task.cont
 
@@ -870,12 +870,9 @@ class DuckOfCards(ShowBase):
 			# u and v are tile coordinates in terms of tile grid
 			u: int = int(self.hitTile.getTag("u"))
 			v: int = int(self.hitTile.getTag("v"))
-			print(int(str(self.mapImg.getAlphaVal(u,v))) >> 1)
-			if (not int(str(self.mapImg.getAlphaVal(u,v))) >> 1):
-				# pickable bit is false: give user feedback
-				self.ui.popupText("Can't pick that tile!", 3)
-				# bounce the highlight tile (spring)
-			else: # tile is pickable: place tower and exit tile picker state
+			#print(int(self.mapImg.getAlphaVal(u,v)))
+			if (self.mapImg.getAlphaVal(u,v) & 0b0100):
+				# tile is pickable: place tower and exit tile picker state
 				#print("ONMOUSE HIT " + str(u) + ", " + str(v))
 				self.spawnTower(Vec3(self.hitTile.getX()+1.,self.hitTile.getY(),self.hitTile.getZ()))
 				self.highlightTile.setPos(0,0,-1)
@@ -885,6 +882,10 @@ class DuckOfCards(ShowBase):
 				#self.hitTile.setColor(1.,1.,1.,1.)
 				#self.hitTile.findTexture(self.tileTS).load(self.groundPNM)
 				self.fsm.demand('Gameplay')
+			else: 
+				# pickable bit is false: give user feedback
+				self.ui.popupText("Can't pick that tile!", 3)
+				# TODO bounce the highlight tile (spring)
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
 		# 		if self.mouseWatcherNode.hasMouse():
