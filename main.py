@@ -309,6 +309,14 @@ class UI():
 	# 	# TODO : BROKEN : THIS RECEIVES THE WORLD POSITION, BUT IT NEEDS THE SCREEN POSITION
 	# 	cdNP.setPos(pos)
 
+class TileModification():
+	def __init__(self, name, effect, duration=0) -> None:
+		# placeholder for a more elaborate class for holding tile modifications
+		self.name: str = name
+		self.effect = effect
+		if (duration is not None):
+			self.duration = duration
+
 class DialogueState():
 	def __init__(self, step, seqs) -> None:
 		assert isinstance(seqs, Sequence), f'Dialogue state not passed list at construction as required!'
@@ -588,10 +596,12 @@ class DuckOfCards(ShowBase):
 		#self.lens.setNearFar(-40,40)
 		#self.camera.node().setLens(self.lens)
 
-		width: int = 40
-		length: int = 40
-		self.createMap(width,length)
-
+		self.width: int = 50
+		self.length: int = 50
+		self.createMap(self.width,self.length)
+		self.tileModArray: list[list[TileModification]] = []
+		# generate path textures and apply to tiles
+		self.placePaths(self.width,self.length)
 		#self.tileMap.ls()
 
 		# n.b. this is part of the opening cutscene as a placeholder for the final dialogue data
@@ -607,9 +617,6 @@ class DuckOfCards(ShowBase):
 		self.textCardMaker.setHasUvs(1)
 		self.textCardMaker.setFrameFullscreenQuad()
 		#self.textCardMaker.clearColor()
-
-		# generate path textures and apply to tiles
-		self.placePaths(width,length)
 
 		# initialise the tile picker
 		self.tilePicker: CollisionNode = CollisionTraverser()
@@ -657,6 +664,18 @@ class DuckOfCards(ShowBase):
 
 		# initialise the UI manager
 		self.ui: UI = UI()
+
+		if (testing):
+			minimapMaker: CardMaker = CardMaker('minimap')
+			minimapMaker.setHasUvs(1)
+			minimapMaker.setFrame(0.,.65,0.,.65)
+			self.mapTex: Texture = Texture("mapTex")
+			self.mapTex.load(self.mapImg)
+			self.mapTex.setMagfilter(SamplerState.FT_nearest)
+			self.mapTex.setMinfilter(SamplerState.FT_nearest)
+			self.minimapNP: NodePath = aspect2d.attachNewNode(minimapMaker.generate())
+			self.minimapNP.setPos(-1.35,0.,-.8)
+			self.minimapNP.setTexture(self.mapTex)
 
 		# keyboard controls to move isometrically
 		self.accept("arrow_left", self.move, ["left"])
@@ -768,7 +787,7 @@ class DuckOfCards(ShowBase):
 					print("pond created at " + str(u) + ", " + str(v))
 					tile.setTexture(self.tileTS, self.pondTex)
 					tile.setTag("TILEpond",str(tileIndex))
-					self.mapImg.setGreenVal(u,v,2) # type 2: pond
+					self.mapImg.setGreenVal(u,v,100) # type 100: pond
 					self.mapImg.setBlueVal(u,v,0) # empty upgrade index
 					self.mapImg.setAlphaVal(u,v,0b1000) # collides, not pickable, not corrupted, not damageable friendly structure
 					#tile.setColor(0,1,0,1)
@@ -776,13 +795,13 @@ class DuckOfCards(ShowBase):
 					# set as a regular grass tile
 					tile.setTexture(self.tileTS, self.groundTex)
 					tile.setTag("TILEground",str(tileIndex))
-					self.mapImg.setGreenVal(u,v,1) # type 1: grass
+					self.mapImg.setGreenVal(u,v,255) # type 255: grass
 					self.mapImg.setBlueVal(u,v,0) # empty upgrade index
 					self.mapImg.setAlphaVal(u,v,0b0100) # does not collide, pickable, not corrupted, not damageable friendly structure
 				tileIndex += 1
 
 		# define castle tile in centre
-		self.mapImg.setGreenVal(int(width/2),int(length/2),3) # type 3: castle
+		self.mapImg.setGreenVal(int(width/2),int(length/2),200) # type 200: castle
 		self.mapImg.setAlphaVal(int(width/2),int(length/2),0b0001) # does not collide, not pickable, not corrupted, damageable friendly structure
 				
 		# then apply decals like paths, decor/flora&fauna, obstacles etc
@@ -835,6 +854,11 @@ class DuckOfCards(ShowBase):
 			self.fsm.demand('GameOver')
 
 		self.ui.update()
+
+		if (testing):
+			self.mapTex.load(self.mapImg)
+			self.mapTex.setMagfilter(SamplerState.FT_nearest)
+			self.mapTex.setMinfilter(SamplerState.FT_nearest)
 
 		return Task.cont
 

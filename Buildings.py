@@ -27,6 +27,7 @@ class PlayerCastle():
 		Sequence(Func(self.node.setColor,1.2,0.1,0.1,1.),
 				Wait(0.1),
 				Func(self.node.setColor,0.3,0.35,0.6,1.)).start()
+		base.mapImg.setRed(int(base.width/2),int(base.length/2),base.mapImg.getRed(int(base.width/2),int(base.length/2))-0.05)
 
 class Arrow():
 	def __init__(self, pos, enemyId) -> None:
