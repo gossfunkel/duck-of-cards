@@ -905,7 +905,7 @@ class DuckOfCards(ShowBase):
 			if (self.mapImg.getAlphaVal(u,v) & 0b0100): # mask bits other than pickable bit
 				# tile is pickable: place tower and exit tile picker state
 				#print("ONMOUSE HIT " + str(u) + ", " + str(v))
-				self.spawnTower(Vec3(self.hitTile.getX()+1.,self.hitTile.getY(),self.hitTile.getZ()))
+				self.spawnTower(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
 				self.highlightTile.setPos(0,0,-1)
 				#self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
 				#self.hitTile.set_color(1,0,0,1)
@@ -1015,10 +1015,10 @@ class DuckOfCards(ShowBase):
 		# 	this sequence when it persists after spawning the wave
 		self.spawnSeq = None
 
-	def spawnTower(self, pos) -> Buildings.Tower:
+	def spawnTower(self, u, v) -> Buildings.Tower:
 		#pos = pos - Vec3(1.5,1.5,0)
-		print("Adding a tower at [" + str(pos[0]) + ", " + str(pos[1]) + ", " + str(pos[2]) + "]")
-		newTower = Buildings.Tower(pos)
+		print(f"Adding a tower at tile [u: {u}, v: {v}]")
+		newTower = Buildings.Tower(self.getTilePos(u,v), u, v)
 		# add to list to allow pausing of sequences
 		self.towers.append(newTower)
 		return newTower
@@ -1064,6 +1064,24 @@ class DuckOfCards(ShowBase):
 		if testing: print("Castle taking " + str(dmg) + " damage!")
 		castleHP -= dmg
 
+	def getTile(self,u,v) -> NodePath:
+		# search self.tileMap for tags u and v and return tile
+		row: NodePathCollection = self.tileMap.findAllMatches(f"**/=u={u}")
+		column: NodePathCollection = self.tileMap.findAllMatches(f"**/=v={v}")
+		match: NodePath = None
+		for x in column:
+			for y in row:
+				if (x == y):
+					match = x
+		if (match != None):
+			return match
+		else:
+			raise ValueError(f"Given UVs don't match a tile! u: {u}, v: {v}")
+
+	def getTilePos(self, u, v) -> Vec3:
+		tile = self.getTile(u,v)
+		return tile.getPos() + Vec3(1.,0.,0.)
+	
 	def quit(self) -> None: 		# exit the game in a reasonable fashion
 		print("Bye bye! quack quack quack...")
 		self.fsm.cleanup()

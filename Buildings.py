@@ -76,7 +76,7 @@ class Arrow():
 		ModelPool.releaseModel("assets/arrow.gltf")
 
 class Tower():
-	def __init__(self, pos) -> None:
+	def __init__(self, pos, u ,v) -> None:
 		towerModel = base.loader.loadModel("assets/tower.gltf")
 		print("spawning tower at " + str(pos))
 		towerModel.setScale(0.2)
@@ -84,6 +84,8 @@ class Tower():
 		self.node: NodePath = render.attachNewNode("tower")
 		towerModel.wrtReparentTo(self.node)
 		self.landPosition: Vec3 = pos
+		self.u: int = u
+		self.v: int = v
 		self.node.setPos(pos.getX(),pos.getY(),pos.getZ() + .04)
 		#self.node.setScale()
 		self.rateOfFire: float = 1.0
@@ -141,6 +143,9 @@ class Tower():
 		#def pause(self):
 		#	base.taskMgr.getTasksNamed(str(self.node)+"_update").pause() 
 		#   ^ this pause method isn't a thing. using a sequence instead of the task
+
+	#def takedmg(self):
+		#base.mapImg.setRed(self.u,self.v,base.mapImg.getRed(self.u,self.v)-0.05)
 
 	def cdOFF(self) -> bool:
 		if not self.onCD: return 1
