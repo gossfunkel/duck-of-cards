@@ -20,9 +20,6 @@ import Buildings
 config_vars: str = """
 win-size 1200 800
 show-frame-rate-meter 1
-//hardware-animated-vertices true
-//basic-shaders-only false
-//threading-model Cull/Draw
 hardware-animated-vertices true
 framebuffer-srgb true
 model-cache-dir
@@ -34,10 +31,10 @@ loadPrcFileData("", config_vars)
 
 # GLOBAL VARIABLES
 
-castleHP: float = 100.0
-playerGold: int = 10
-waveNum: int = 0
 testing: bool = True
+castleHP: float = 100.0
+playerGold: int = 10 if not testing else 50
+waveNum: int = 0
 
 # GAME OPENING / TUTORIAL
 	# <intro dialogue sequence>
@@ -191,20 +188,39 @@ class UI():
 		#							items = [newTowerBtn], initialItem = 0,
         #                           fadeScreen = 0.7,
                                    relief = DGG.FLAT)
-		newTowerBtn	= DirectButton(text = "10", command = base.buyTower,
-										pos = (-0.3, 0, -0.3), parent = self.cardMenuScreen, scale = 0.3)
-		newTowerCM = CardMaker('newTowerCard')
-		newTowerCM.setFrame(-0.5,0.,-0.605,0.)
-		newTowerCard = aspect2d.attachNewNode(newTowerCM.generate())
+		newCardMaker = CardMaker('newCard')
+		newCardMaker.setFrame(0.,0.5,0.,0.605)
+
+		# TODO: Flexible card menu for random ducky offerings
+		# 	1) Randomly generate 3 numbers (weighted?). These index a list containing tuples of card texture filenames 
+		# 		and their appropriate command (as a lambda?)
+		# 	2) Create 3 cards, loading the variables that have now been filled with the textures
+		# 	3) Load those textures into the buttons with the appropriate command
+
+		newTowerCard = aspect2d.attachNewNode(newCardMaker.generate())
 		#newTowerCard.setScale(0.4)
-		newTowerCard.reparentTo(self.cardMenuScreen)
-		newTowerCTex = loader.loadTexture('assets/card-buildTower.png')
+		#newTowerCard.reparentTo(self.cardMenuScreen)
+		newTowerCTex = loader.loadTexture('assets/cards/card-buildTower.png')
 		newTowerCTex.set_format(Texture.F_srgb_alpha)
 		newTowerCard.setTexture(newTowerCTex)
+		newTowerBtn	= DirectButton(geom=newTowerCard, command=base.buyTower, relief=None,
+										pos=(-1., 0, -0.5), parent=self.cardMenuScreen, scale=1.3)
+		newTowerCard.hide() # has to be hidden *after* button is constructed or button will not have texture
+
+		upgradeTowerCard = aspect2d.attachNewNode(newCardMaker.generate())
+		#upgradeTowerCard.setScale(0.4)
+		#upgradeTowerCard.reparentTo(self.cardMenuScreen)
+		upgradeTowerCTex = loader.loadTexture('assets/cards/card-tripleShot.png')
+		upgradeTowerCTex.set_format(Texture.F_srgb_alpha)
+		upgradeTowerCard.setTexture(upgradeTowerCTex)
+		upgradeTowerBtn	= DirectButton(geom=upgradeTowerCard, command=base.upgradeTower, relief=None,
+										pos=(0, 0, -0.5), parent=self.cardMenuScreen, scale=1.3)
+		upgradeTowerCard.hide() # has to be hidden *after* button is constructed or button will not have texture
+
 
 		self.cardMenuScreen.hide()
 		self.cardMenuLabel = DirectLabel(text = "Welcome!\nWould you like to buy one of my fine cards?", 
-								parent = self.cardMenuScreen, scale = 0.1, pos = (0, 0, 0.1))
+								parent = self.cardMenuScreen, scale = 0.1, pos = (0, 0, 0.8))
 		dukeImgObj = OnscreenImage(image='assets/theDuke-sprite_ready.png', pos=(0.8, 0.5, 0.6), 
 										parent=self.cardMenuScreen, scale=0.4)
 		dukeImgObj.setTransparency(TransparencyAttrib.MAlpha)
@@ -464,9 +480,29 @@ class GamestateFSM(FSM):
 		for tower in base.towers:
 			tower.scanSeq.pause()
 		# make the highlight for the tile picker visible
+		#base.highlightTile.setTexture(pickHighlight)
 		base.highlightTile.show()
 
 	def exitPickTower(self) -> None:
+		#self.choosingTile = False
+		base.highlightTile.hide()
+		pass
+
+	# Pick Upgrade Tower
+
+	def enterPickUpgradeTower(self) -> None:
+		self.waveSchedule.pause()
+		if (base.spawnSeq != None):
+			base.spawnSeq.pause()
+		for enemy in base.enemies:
+			enemy.moveSeq.pause()
+		for tower in base.towers:
+			tower.scanSeq.pause()
+		# make the highlight for the tile picker visible
+		#base.highlightTile.setTexture(upgradeHighlight)
+		base.highlightTile.show()
+
+	def exitPickUpgradeTower(self) -> None:
 		#self.choosingTile = False
 		base.highlightTile.hide()
 		pass
@@ -892,12 +928,39 @@ class DuckOfCards(ShowBase):
 						# pickable bit is false
 						#self.hitTile = None
 						self.highlightTile.setColor(1,0,0,1)
+		elif (self.fsm.state == 'PickUpgradeTower'):
+			if (self.mouseWatcherNode.hasMouse()):
+				mousePos = base.mouseWatcherNode.getMouse()
+				self.tilePickerRay.setFromLens(base.camNode, mousePos.x, mousePos.y)
+				self.tilePicker.traverse(self.tileMap)
+
+				if (self.tpQueue.getNumEntries() > 0): 	# when mouse ray collides with tiles:
+					# sort by closest first
+					self.tpQueue.sortEntries() 
+					# find collider node and get tile via index in name
+					tileColl = self.tpQueue.getEntry(0).getIntoNodePath().getParent()
+					#self.hitTile = tileColl.getNode(0)
+					tileInd = int(tileColl.getName().split("-")[1])
+					self.hitTile = self.tileMap.getChild(tileInd)
+					#if (self.hitTile.getTag("TILEground") != ""):
+					# highlight on mouseover
+					#print("hovering over ground tile " + str(self.hitTile))
+					self.highlightTile.setPos(self.hitTile.getX(),self.hitTile.getY(),self.hitTile.getZ() + .01)
+					u = int(self.hitTile.getTag("u"))
+					v = int(self.hitTile.getTag("v"))
+					#print("tile " + str(u) + "," + str(v) + " has alpha " + str(self.mapImg.getAlphaVal(u,v)))
+					if (self.mapImg.getGreenVal(u,v) == 255): # check if grass type
+						self.highlightTile.setColor(1,1,1,1)
+					else:
+						# pickable bit is false
+						#self.hitTile = None
+						self.highlightTile.setColor(1,0,0,1)
 
 		return Task.cont
 
 	# respond to left mouseclick (from Gameplay state)
 	def onMouse(self) -> None:
-		if (self.fsm.state == 'PickTower' and self.hitTile != None): # in tower tile picker state; check if clicking a pickable tile
+		if (self.fsm.state == 'PickTower' and self.hitTile is not None): # in tower tile picker state; check if clicking a pickable tile
 			# u and v are tile coordinates in terms of tile grid
 			u: int = int(self.hitTile.getTag("u"))
 			v: int = int(self.hitTile.getTag("v"))
@@ -905,18 +968,32 @@ class DuckOfCards(ShowBase):
 			if (self.mapImg.getAlphaVal(u,v) & 0b0100): # mask bits other than pickable bit
 				# tile is pickable: place tower and exit tile picker state
 				#print("ONMOUSE HIT " + str(u) + ", " + str(v))
+				# TODO: allow spawning of multiple tower types (tower spawn buffer?)
 				self.spawnTower(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
 				self.highlightTile.setPos(0,0,-1)
-				#self.hitTile.set_texture(self.tileTS, self.groundTex, 1)
-				#self.hitTile.set_color(1,0,0,1)
 				self.hitTile = None
-				#self.hitTile.setColor(1.,1.,1.,1.)
-				#self.hitTile.findTexture(self.tileTS).load(self.groundPNM)
 				self.fsm.demand('Gameplay')
 			else: 
 				# pickable bit is false: give user feedback
-				self.ui.popupText("Can't pick that tile!", 3)
+				self.ui.popupText("You can't place a tower there!", 3)
 				# TODO bounce the highlight tile (spring)
+		elif (self.fsm.state == 'PickUpgradeTower' and self.hitTile is not None):
+			# u and v are tile coordinates in terms of tile grid
+			u: int = int(self.hitTile.getTag("u"))
+			v: int = int(self.hitTile.getTag("v"))
+			#print(int(self.mapImg.getAlphaVal(u,v)))
+			if (self.mapImg.getGreenVal(u,v) == 255): # check if grass type
+				# find tower at uv
+				print("upgrading tower")
+				# add loaded upgrade
+				# exit upgrade picker
+				self.highlightTile.setPos(0,0,-1)
+				self.hitTile = None
+				self.fsm.demand('Gameplay')
+			else:
+				# pickable bit is false: give user feedback
+				self.ui.popupText("You can't upgrade that! Pick a tower.", 3)
+				# TODO wiggle/bounce the highlight tile (spring)
 		# else: 
 		# 	if not (self.fsm.state == 'CardMenu'): # if the menu isn't open
 		# 		if self.mouseWatcherNode.hasMouse():
@@ -1034,6 +1111,17 @@ class DuckOfCards(ShowBase):
 			self.ui.popupText("broke bitch",2)
 			return False
 
+	def upgradeTower(self) -> bool:
+		global playerGold
+		if playerGold >= 10:
+			playerGold -= 10
+			self.fsm.demand('PickUpgradeTower')
+			return True 
+		else:
+			# TODO: show hoverover tip that you can't afford this card
+			self.ui.popupText("broke bitch",2)
+			return False
+
 	def offerCard(self) -> None:
 		#self.fsm.setClickWaitingFalse()
 		newTowerCM = CardMaker('newTowerCard')
@@ -1042,7 +1130,7 @@ class DuckOfCards(ShowBase):
 		self.newTowerCard.setPos(-0.2,0.,0.5)
 		self.newTowerCard.setScale(1.4)
 		#self.newTowerCard.reparentTo(aspect2d)
-		newTowerCTex = loader.loadTexture('assets/card-buildTower.png')
+		newTowerCTex = loader.loadTexture('assets/cards/card-buildTower.png')
 		newTowerCTex.set_format(Texture.F_srgb_alpha)
 		self.newTowerCard.setTexture(newTowerCTex)
 
@@ -1081,6 +1169,10 @@ class DuckOfCards(ShowBase):
 	def getTilePos(self, u, v) -> Vec3:
 		tile = self.getTile(u,v)
 		return tile.getPos() + Vec3(1.,0.,0.)
+
+	def saveGameState(self, mapImg, filename) -> bool:
+		# write the mapImg to a file at filename
+		return 1
 	
 	def quit(self) -> None: 		# exit the game in a reasonable fashion
 		print("Bye bye! quack quack quack...")

@@ -7,14 +7,12 @@ import tools
 
 class PlayerCastle():
 	def __init__(self) -> None:
-		model = loader.loadModel("assets/playerBase.gltf")
+		model: NodePath = loader.loadModel("assets/playerBase.gltf")
 		model.setScale(0.2)
 		self.node: NodePath = render.attachNewNode("castleMap")
 		model.reparentTo(self.node)
 		self.node.setPos(0.,0.,0.)
 		self.node.setH(-45)
-		# this is a flat colour, not the textures that should be baked into the model
-		#model.setColor(0.3,0.35,0.6,1.)
 		self.node.setTag("castle", '0')
 		#model.node().setIntoCollideMask(BitMask32(0x04))
 
@@ -62,7 +60,7 @@ class Arrow():
 	def getTargetPos(self) -> Vec3:
 		# get up-to-date position
 		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
-		p = self.enemy.node.getPos()
+		p: Vec3 = self.enemy.node.getPos()
 		# adjust for visual accuracy
 		#p[0] += .55
 		#p[1] -= .3
@@ -77,20 +75,23 @@ class Arrow():
 
 class Tower():
 	def __init__(self, pos, u ,v) -> None:
-		towerModel = base.loader.loadModel("assets/tower.gltf")
+		towerModel: NodePath = base.loader.loadModel("assets/tower.gltf")
 		print("spawning tower at " + str(pos))
 		towerModel.setScale(0.2)
 		#towerModel.setP(90)
 		self.node: NodePath = render.attachNewNode("tower")
+		self.node.setTag("u",str(u))
+		self.node.setTag("v",str(v))
 		towerModel.wrtReparentTo(self.node)
 		self.landPosition: Vec3 = pos
-		self.u: int = u
-		self.v: int = v
+		#self.u: int = u
+		#self.v: int = v
 		self.node.setPos(pos.getX(),pos.getY(),pos.getZ() + .04)
 		#self.node.setScale()
 		self.rateOfFire: float = 1.0
 		self.damage: float = 1.0
 		self.range: float = 5.0
+		self.numShots = 1
 		self.cooldown: float = 3.0
 		self.onCD: bool = True
 
@@ -176,6 +177,9 @@ class Tower():
 			self.onCD = True
 			self.cdSeq.start()
 
-	def launchProjectiles(self, enemy) -> None:
+	def launchProjectiles(self, enemy) -> Arrow:
 		#print("firing at " + enemy)
-		newArrow = Arrow(self.node.getPos(), enemy)
+		newArrows = []
+		for _ in range(self.numShots):
+			newArrows.append(Arrow(self.node.getPos(), enemy))
+		return newArrows
