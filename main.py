@@ -173,15 +173,15 @@ class UI():
 		#						pos=(-0.3, 0, 0.9), command=base.pickTower)
 
 		# construct 'game over' screen elements
-		self.gameOverScreen = DirectDialog(frameSize = (-0.7, 0.7, -0.7, 0.7),
-                                   			fadeScreen = 0.4, relief = DGG.FLAT)
+		self.gameOverScreen = DirectDialog(frameSize=(-0.7, 0.7, -0.7, 0.7),
+                                   			fadeScreen=0.4, relief=DGG.FLAT)
 		self.gameOverScreen.hide()
-		self.gameOverLabel = DirectLabel(text = "Game Over!", parent = self.gameOverScreen,
-										scale = 0.1, pos = (0, 0, 0.2))
-		restartBtn 	= DirectButton(text = "Restart", command = base.fsm.exitGameOver, pos = (-0.3, 0, -0.2),
-								parent = self.gameOverScreen, scale = 0.1)
-		quitBtn 	= DirectButton(text = "Quit", command = base.quit, pos = (0.3, 0, -0.2),
-								parent = self.gameOverScreen, scale = 0.1)
+		gameOverLabel = DirectLabel(text="Game Over!", parent=self.gameOverScreen,
+										scale=0.1, pos=(0, 0, 0.2))
+		restartBtn 	= DirectButton(text="Restart", command=base.fsm.exitGameOver, pos = (-0.3, 0, -0.2),
+									parent=self.gameOverScreen, scale=0.1)
+		quitBtn 	= DirectButton(text="Quit", command=base.quit, pos=(0.3, 0, -0.2),
+									parent=self.gameOverScreen, scale=0.1)
 		
 		# construct 'card menu' elements
 		self.cardMenuScreen = DirectFrame(frameSize = (-1.2, 1.2, -.8, .8),
@@ -198,31 +198,39 @@ class UI():
 		# 	3) Load those textures into the buttons with the appropriate command
 
 		newTowerCard = aspect2d.attachNewNode(newCardMaker.generate())
-		#newTowerCard.setScale(0.4)
+		newTowerCard.setScale(0.75)
 		#newTowerCard.reparentTo(self.cardMenuScreen)
 		newTowerCTex = loader.loadTexture('assets/cards/card-buildTower.png')
 		newTowerCTex.set_format(Texture.F_srgb_alpha)
 		newTowerCard.setTexture(newTowerCTex)
-		newTowerBtn	= DirectButton(geom=newTowerCard, command=base.buyTower, relief=None,
-										pos=(-1., 0, -0.5), parent=self.cardMenuScreen, scale=1.3)
+		newTowerBtn  = DirectButton(geom=newTowerCard, command=base.buyTower, relief=None,
+										pos=(-1., 0, -0.5), parent=self.cardMenuScreen, scale=1.1)
 		newTowerCard.hide() # has to be hidden *after* button is constructed or button will not have texture
 
 		upgradeTowerCard = aspect2d.attachNewNode(newCardMaker.generate())
-		#upgradeTowerCard.setScale(0.4)
-		#upgradeTowerCard.reparentTo(self.cardMenuScreen)
+		upgradeTowerCard.setScale(0.75)
 		upgradeTowerCTex = loader.loadTexture('assets/cards/card-tripleShot.png')
 		upgradeTowerCTex.set_format(Texture.F_srgb_alpha)
 		upgradeTowerCard.setTexture(upgradeTowerCTex)
-		upgradeTowerBtn	= DirectButton(geom=upgradeTowerCard, command=base.upgradeTower, relief=None,
-										pos=(0, 0, -0.5), parent=self.cardMenuScreen, scale=1.3)
+		upgradeTowerBtn  = DirectButton(geom=upgradeTowerCard, command=base.upgradeTower, relief=None,
+										pos=(-0.25, 0., -0.5), parent=self.cardMenuScreen, scale=1.1)
 		upgradeTowerCard.hide() # has to be hidden *after* button is constructed or button will not have texture
+
+		magicTowerCard = aspect2d.attachNewNode(newCardMaker.generate())
+		magicTowerCard.setScale(0.75)
+		magicTowerCTex = loader.loadTexture('assets/cards/card-magicTower.png')
+		magicTowerCTex.set_format(Texture.F_srgb_alpha)
+		magicTowerCard.setTexture(magicTowerCTex)
+		magicTowerBtn  = DirectButton(geom=magicTowerCard, command=base.buyMagicTower, relief=None,
+										pos=(0.5, 0., -0.5), parent=self.cardMenuScreen, scale=1.1)
+		magicTowerCard.hide() # has to be hidden *after* button is constructed or button will not have texture
 
 
 		self.cardMenuScreen.hide()
-		self.cardMenuLabel = DirectLabel(text = "Welcome!\nWould you like to buy one of my fine cards?", 
-								parent = self.cardMenuScreen, scale = 0.1, pos = (0, 0, 0.8))
-		dukeImgObj = OnscreenImage(image='assets/theDuke-sprite_ready.png', pos=(0.8, 0.5, 0.6), 
-										parent=self.cardMenuScreen, scale=0.4)
+		self.cardMenuLabel = DirectLabel(text = "Welcome!\nWould you like to buy\none of my fine cards?", 
+								parent=self.cardMenuScreen, scale=0.12, pos=(-0.9, 0, 0.55), text_align=TextNode.ALeft)
+		dukeImgObj = OnscreenImage(image='assets/theDuke-sprite_ready.png', pos=(0.82, 0, 0.6), 
+										parent=self.cardMenuScreen, scale=0.37)
 		dukeImgObj.setTransparency(TransparencyAttrib.MAlpha)
 		self.duckButtonMaps = loader.loadModel('assets/duck-button_maps')
 		#self.duckButtonMaps.node().set_format(Texture.F_srgb)
@@ -704,7 +712,7 @@ class DuckOfCards(ShowBase):
 		if (testing):
 			minimapMaker: CardMaker = CardMaker('minimap')
 			minimapMaker.setHasUvs(1)
-			minimapMaker.setFrame(0.,.65,0.,.65)
+			minimapMaker.setFrame(0.,.5,0.,.5)
 			self.mapTex: Texture = Texture("mapTex")
 			self.mapTex.load(self.mapImg)
 			self.mapTex.setMagfilter(SamplerState.FT_nearest)
@@ -969,7 +977,12 @@ class DuckOfCards(ShowBase):
 				# tile is pickable: place tower and exit tile picker state
 				#print("ONMOUSE HIT " + str(u) + ", " + str(v))
 				# TODO: allow spawning of multiple tower types (tower spawn buffer?)
-				self.spawnTower(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
+				if self.pickTowerType == "basic":
+					self.spawnTower(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
+				elif self.pickTowerType == "magic":
+					self.spawnMagicTower(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
+				else:
+					raise ValueError("Tower type not properly initialised before tower picked")
 				self.highlightTile.setPos(0,0,-1)
 				self.hitTile = None
 				self.fsm.demand('Gameplay')
@@ -1095,7 +1108,16 @@ class DuckOfCards(ShowBase):
 	def spawnTower(self, u, v) -> Buildings.Tower:
 		#pos = pos - Vec3(1.5,1.5,0)
 		print(f"Adding a tower at tile [u: {u}, v: {v}]")
-		newTower = Buildings.Tower(self.getTilePos(u,v), u, v)
+		newTower: Buildings.Tower = Buildings.Tower(self.getTilePos(u,v), u, v)
+		self.mapImg.setGreenVal(int(u),int(v),150) # type 150: basic tower
+		# add to list to allow pausing of sequences
+		self.towers.append(newTower)
+		return newTower
+
+	def spawnMagicTower(self, u, v) -> Buildings.MagicTower:
+		print(f"Adding a magic tower at tile [u: {u}, v: {v}]")
+		newTower: Buildings.MagicTower = Buildings.MagicTower(self.getTilePos(u,v), u, v)
+		self.mapImg.setGreenVal(int(u),int(v),151) # type 151: magic tower
 		# add to list to allow pausing of sequences
 		self.towers.append(newTower)
 		return newTower
@@ -1104,6 +1126,19 @@ class DuckOfCards(ShowBase):
 		global playerGold
 		if playerGold >= 10:
 			playerGold -= 10
+			self.pickTowerType = "basic"
+			self.fsm.demand('PickTower')
+			return True
+		else:
+			# TODO: show hoverover tip that you can't afford this card
+			self.ui.popupText("broke bitch",2)
+			return False
+
+	def buyMagicTower(self) -> bool:
+		global playerGold
+		if playerGold >= 15:
+			playerGold -= 15
+			self.pickTowerType = "magic"
 			self.fsm.demand('PickTower')
 			return True
 		else:

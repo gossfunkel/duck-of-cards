@@ -5,9 +5,11 @@ from direct.interval.IntervalGlobal import *
 import numpy as np
 import tools
 
+# tower types data
+
 class PlayerCastle():
 	def __init__(self) -> None:
-		model: NodePath = loader.loadModel("assets/playerBase.gltf")
+		model: GeomNode = loader.loadModel("assets/playerBase.gltf")
 		model.setScale(0.2)
 		self.node: NodePath = render.attachNewNode("castleMap")
 		model.reparentTo(self.node)
@@ -29,10 +31,10 @@ class PlayerCastle():
 
 class Arrow():
 	def __init__(self, pos, enemyId) -> None:
-		self.arrowModel = base.loader.loadModel("assets/arrow2.gltf")
+		self.model: GeomNode = base.loader.loadModel("assets/arrow2.gltf")
 		self.node: NodePath = render.attachNewNode("arrow")
-		self.arrowModel.wrtReparentTo(self.node)
-		self.arrowModel.setScale(0.06)
+		self.model.wrtReparentTo(self.node)
+		self.model.setScale(0.06)
 		self.node.setScale(0.6)
 		self.enemy: spritem.Enemy = base.enemies[int(enemyId)]
 		self.damage: float = 10.0
@@ -51,10 +53,11 @@ class Arrow():
 											self.node.getPos(), fluid=1, blendType='noBlend')
 
 		# on arrival/despawn, do damage to enemy
-		self.despawnInt = Func(self.despawn)
+		#self.despawnInt = Func(self.despawn)
 		self.moveSeq = Sequence(
 			self.move,
-			self.despawnInt
+			#self.despawnInt
+			Func(self.despawn)
 		).start()
 
 	def getTargetPos(self) -> Vec3:
@@ -70,8 +73,25 @@ class Arrow():
 	def despawn(self) -> None:
 		# do damage and remove
 		self.enemy.damage(self.damage)
+		ModelPool.releaseModel("assets/arrow.gltf")
+		self.node.removeNode()
+
+class Fireball(Arrow):
+	def __init__(self, pos, enemyId) -> None:
+		Arrow.__init__(self, pos, enemyId)
 		self.node.removeNode()
 		ModelPool.releaseModel("assets/arrow.gltf")
+		self.model: GeomNode = base.loader.loadModel("assets/fireball.egg")
+		self.node: NodePath = render.attachNewNode("fireball")
+		self.model.wrtReparentTo(self.node)
+		self.model.setScale(0.06)
+		self.node.setScale(0.6)
+		self.node.setP(30)
+		self.node.setY(-45) 
+		# modified origin for realism
+		self.node.setPos(pos + Vec3(-.1, 0., .7))
+		self.node.lookAt(self.getTargetPos())
+		self.damage: float = 15.0
 
 class Tower():
 	def __init__(self, pos, u ,v) -> None:
@@ -91,9 +111,10 @@ class Tower():
 		self.rateOfFire: float = 1.0
 		self.damage: float = 1.0
 		self.range: float = 5.0
-		self.numShots = 1
+		self.numShots: int = 1
 		self.cooldown: float = 3.0
 		self.onCD: bool = True
+		self.damageType: str = "physical"
 
 		self.vel: Vec3 = Vec3(0.,0.,-0.2)
 
@@ -183,3 +204,17 @@ class Tower():
 		for _ in range(self.numShots):
 			newArrows.append(Arrow(self.node.getPos(), enemy))
 		return newArrows
+
+class MagicTower(Tower):
+	def __init__(self, pos, u, v) -> None:
+		Tower.__init__(self, pos, u, v)
+		self.node.removeNode()
+		ModelPool.releaseModel("assets/tower.gltf")
+		self.damageType = "magic"
+
+	def launchProjectiles(self, enemy) -> Fireball:
+		#print("firing at " + enemy)
+		newFireballs = []
+		for _ in range(self.numShots):
+			newFireballs.append(Fireball(self.node.getPos(), enemy))
+		return newFireballs

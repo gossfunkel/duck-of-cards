@@ -1,0 +1,69 @@
+<Comment> {
+  "egg-texture-cards -o ../duck-of-cards/assets/fireball.egg -b -fps 5 ../duck-of-cards/assets/fireball_1.png ../duck-of-cards/assets/fireball_2.png ../duck-of-cards/assets/fireball_3.png ../duck-of-cards/assets/fireball_4.png"
+}
+<Texture> fireball_4 {
+  "../duck-of-cards/assets/fireball_4.png"
+}
+<Texture> fireball_3 {
+  "../duck-of-cards/assets/fireball_3.png"
+}
+<Texture> fireball_2 {
+  "../duck-of-cards/assets/fireball_2.png"
+}
+<Texture> fireball_1 {
+  "../duck-of-cards/assets/fireball_1.png"
+}
+<Group> {
+  <Switch> { 1 }
+  <Scalar> fps { 5 }
+  <VertexPool> vpool {
+    <Vertex> 0 {
+      -0.5 0.5 0
+      <UV> { 0 1 }
+    }
+    <Vertex> 1 {
+      -0.5 -0.5 0
+      <UV> { 0 0 }
+    }
+    <Vertex> 2 {
+      0.5 -0.5 0
+      <UV> { 1 0 }
+    }
+    <Vertex> 3 {
+      0.5 0.5 0
+      <UV> { 1 1 }
+    }
+  }
+  <Group> fireball_1 {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { fireball_1 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+  <Group> fireball_2 {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { fireball_2 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+  <Group> fireball_3 {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { fireball_3 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+  <Group> fireball_4 {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { fireball_4 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+}

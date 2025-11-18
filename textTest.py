@@ -29,20 +29,28 @@ class TextTest(ShowBase):
 		#newTowerBtn	= DirectButton(text = "10", command = base.buyTower,
 		#								pos = (-0.5, 0, -0.3), parent = self.cardMenuScreen, scale = 0.3)
 		#self.duckButtonMaps = loader.loadModel('assets/duck-button_maps')
-		newCardMaker = CardMaker('newCard')
-		newCardMaker.setFrame(0.,0.5,0.,0.605)
+		#newCardMaker = CardMaker('newCard')
+		#newCardMaker.setFrame(0.,0.5,0.,0.605)
+		self.fireballModel: GeomNode = base.loader.loadModel("assets/fireball.egg")
+		self.node: NodePath = render.attachNewNode("fireball")
+		self.node.set_pos(0,0,0)
+		self.fireballModel.wrtReparentTo(self.node)
+		#self.fireballModel.setScale(0.06)
+		#self.node.setScale(0.6)
+		#self.node.setP(30)
+		#self.node.setY(-45) 
 
-		newTowerCard = aspect2d.attachNewNode(newCardMaker.generate())
+		#newTowerCard = aspect2d.attachNewNode(newCardMaker.generate())
 		#newTowerCard.setScale(0.4)
 		#newTowerCard.reparentTo(self.cardMenuScreen)
-		newTowerCTex = loader.loadTexture('assets/cards/card-buildTower.png')
-		newTowerCTex.set_format(Texture.F_srgb_alpha)
-		newTowerCard.setTexture(newTowerCTex)
+		#newTowerCTex = loader.loadTexture('assets/cards/card-buildTower.png')
+		#newTowerCTex.set_format(Texture.F_srgb_alpha)
+		#newTowerCard.setTexture(newTowerCTex)
 
-		self.towerButt = DirectButton(geom=newTowerCard, 
-						command=self.request, extraArgs=['CardMenu'], 
-						scale=1.3, pos=(-0.3,0,-0.4), relief=None)
-		newTowerCard.hide()
+		#self.towerButt = DirectButton(geom=newTowerCard, 
+		#				command=self.request, extraArgs=['CardMenu'], 
+		#				scale=1.3, pos=(-0.3,0,-0.4), relief=None)
+		#newTowerCard.hide()
 
 		# tpMgr = TextPropertiesManager.getGlobalPtr()
 

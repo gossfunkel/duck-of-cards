@@ -5,6 +5,8 @@ from direct.task import Task
 from direct.interval.IntervalGlobal import *
 from direct.fsm.FSM import FSM
 
+# TODO: ENEMY TYPE DATABASE
+
 class SpriteMod(FSM):
 	def __init__(self, name, pos, speed) -> None:
 		# TODO this can be cleaned up using the defaultFilter(self, request, args) method 
