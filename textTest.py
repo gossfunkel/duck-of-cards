@@ -14,18 +14,28 @@ class SpriteMod(FSM):
 		FSM.__init__(self, (str(name) + 'FSM')) # must be called when overloading
 
 		tsmEgg: GeomNode = base.loader.loadModel(f"assets/{name}.egg")
-		self.tsmSwitchNP: NodePath = tsmEgg.getChild(0)
+		self.tsmSwitch: SwitchNode = tsmEgg.getChild(0).node()
 		#for x in self.tsmSwitch.children: print(x)
 		self.node: NodePath = render.attachNewNode("testspritemod")
 		self.node.set_pos(pos)
 		tsmEgg.wrtReparentTo(self.node)
+
+		self.seated: bool
+		
+		self.seated = False if speed else True
 
 		self.speed: float = speed
 		#self.period: float = 90. / speed
 
 		self.node.setH(self.node.getH() + 45)
 
+		# must initialise its start state to kick off the fsm
 		self.request("BottomLeft")
+
+	def updateDuck(self, task) -> int:
+		#if base.fsm.state == 'Gameplay':
+			#move
+		self.seated = False if speed else True
 
 	def defaultFilter(self, request, args) -> str:
 		return 'BottomLeft'
@@ -33,22 +43,27 @@ class SpriteMod(FSM):
 	# TODO standing still
 
 	# def enterLeft(self) -> None:
+	# 		LEFT = 1
 	# 	self.tsmSwitch.setVisibleChild(1)
 
 	# def enterRight(self) -> None:
+	# 		RIGHT = 2
 	# 	self.tsmSwitch.setVisibleChild(2)
 
 	# def enterFront(self) -> None:
+	# 		FRONT = 3
 	# 	self.tsmSwitch.setVisibleChild(3)
 
 	# def enterBack(self) -> None:
+	# 		BACK = 0
 	# 	self.tsmSwitch.setVisibleChild(0)
 
 	def enterTopLeft(self) -> None:
-		# lerp round
+		# lerp round and switch textures
 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
-		self.tsmSwitchNP.node().setVisibleChild(1)
-		print(self.tsmSwitchNP.node().getVisibleChild())
+		if not self.seated: self.tsmSwitch.setVisibleChild(1)
+		else: self.tsmSwitch.setVisibleChild(0)
+		#print(self.tsmSwitch.getVisibleChild())
 
 	#def exitTopLeft(self) -> None:
 	#	#self.node.setTexTransform(TextureStage.getDefault(), self.mirrorTS)
@@ -64,10 +79,11 @@ class SpriteMod(FSM):
 			return None
 
 	def enterTopRight(self) -> None:
-		# lerp round
+		# lerp round and switch textures
 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
-		self.tsmSwitchNP.node().setVisibleChild(2)
-		print(self.tsmSwitchNP.node().getVisibleChild())
+		if not self.seated: self.tsmSwitch.setVisibleChild(2)
+		else: self.tsmSwitch.setVisibleChild(0)
+		#print(self.tsmSwitch.getVisibleChild())
 
 	#def exitTopRight(self) -> None:
 	#	self.nodepath.set_tex_scale(TextureStage.getDefault(), float(self.nodepath.get_tex_scale(TextureStage.getDefault())[0]*-1),float(self.nodepath.get_tex_scale(TextureStage.getDefault())[1])) #,self.nodepath.get_scale()[2])	
@@ -85,11 +101,12 @@ class SpriteMod(FSM):
 			return None
 
 	def enterBottomRight(self) -> None:
-		# lerp round
+		# lerp round and switch textures
 		#print(str(self.node) + " facing bottom right")
 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
-		self.tsmSwitchNP.node().setVisibleChild(2)
-		print(self.tsmSwitchNP.node().getVisibleChild())
+		if not self.seated: self.tsmSwitch.setVisibleChild(2)
+		else: self.tsmSwitch.setVisibleChild(3)
+		#print(self.tsmSwitch.getVisibleChild())
 
 	#def exitXneg(self) -> None:	
 	#	self.nodepath.set_scale(self.nodepath.get_scale()[0],self.nodepath.get_scale()[1]*-1,self.nodepath.get_scale()[2])
@@ -106,10 +123,11 @@ class SpriteMod(FSM):
 			return None
 
 	def enterBottomLeft(self) -> None:
-		# lerp round
+		# lerp round and switch textures
 		self.node.hprInterval(.5, Vec3(self.node.getH()-90,0,0)).start()
-		self.tsmSwitchNP.node().setVisibleChild(1)
-		print(self.tsmSwitchNP.node().getVisibleChild())
+		if not self.seated: self.tsmSwitch.setVisibleChild(1)
+		else: self.tsmSwitch.setVisibleChild(3)
+		#print(self.tsmSwitch.getVisibleChild())
 
 	#def exitYneg(self) -> None:
 	#	self.nodepath.set_tex_scale(TextureStage.getDefault(), float(self.nodepath.get_tex_scale(TextureStage.getDefault())[0]*-1),float(self.nodepath.get_tex_scale(TextureStage.getDefault())[1])) #,self.nodepath.get_scale()[2])
@@ -154,7 +172,7 @@ class TextTest(ShowBase):
 		# backPath.reparent_to(testSpriteMod)
 		# backPath.hide()
 		# rightPath.show()
-		tsmTest = SpriteMod("testspritemod", (0,0,0), 1)
+		tsmTest = SpriteMod("testspritemod", (0,0,0), 0)
 		
 		#tsmTest.request('Left')
 
