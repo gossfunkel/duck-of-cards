@@ -1,5 +1,6 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import NodePath
+from SpriteModel import SpriteMod
 
 class ChaseTarget():
 	def __init__(model, node, target, damage, speed):
@@ -114,3 +115,12 @@ class PursuitAttacker(ChaseTarget):
 
 #class Sieger(PursuitAttacker):
 #	def __init__()
+
+class BasicEnemy(PursuitAttacker, Seeker, SpriteMod):
+	def __init__(self, pos):
+		self.name: str = "BasicDog"
+		self.speed: float = 1.0
+		SpriteMod.__init__(self, self.name, pos, self.speed)
+		self.damage: float = 5.0
+		self.hp: float = 20.0
+		PursuitAttacker.__init__(self, self.model, self.node, (0.,0.,0.), self.damage, self.speed, self.hp)

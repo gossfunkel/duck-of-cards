@@ -32,10 +32,13 @@ class SpriteMod(FSM):
 		# must initialise its start state to kick off the fsm
 		self.request("BottomLeft")
 
-	def updateDuck(self, task) -> int:
+		base.taskMgr.add(self.update, "update_"+str(self.node), taskChain='default')
+
+	def update(self, task) -> int:
 		#if base.fsm.state == 'Gameplay':
 			#move
-		self.seated = False if speed else True
+		self.seated = False if self.speed else True
+		return task.cont
 
 	def defaultFilter(self, request, args) -> str:
 		return 'BottomLeft'
