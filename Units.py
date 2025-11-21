@@ -14,15 +14,103 @@ class ChaseTarget():
 		self.damage = damage
 		self.speed = speed
 
+		self.move = self.node.posInterval(.5, self.getTargetPos(), 
+											self.node.getPos(), fluid=1, blendType='noBlend')
+
+		# on arrival/despawn, do damage to enemy
+		#self.despawnInt = Func(self.despawn)
+		self.moveSeq = Sequence(
+			self.move,
+			#self.despawnInt
+			Func(self.attack)
+		).start()
+
+	def getTargetPos(self) -> Vec3:
+		# gets overridden in subclasses
+		return self.target
+
+	def attack(self) -> None:
+		if self.target.isAlive():
+			self.target.damage(self.damage)
+			Sequence(wait(1),self.moveSeq).start()
+		else:
+			# TODO: probably shouldn't just automatically die
+			self.despawn()
+
 	def despawn(self) -> None:
 		# do damage and remove TODO fix this
-		self.target.damage(self.damage)
 		ModelPool.releaseModel(self.model)
 		self.node.removeNode()
 
 class Seeker(ChaseTarget):
+	def __init__(model, node, target, damage, speed):
+		ChaseTarget.__init__(model, node, target, damage, speed)
+
+	def getTargetPos(self) -> Vec3:
+		# get up-to-date position
+		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
+		p: Vec3 = self.enemy.node.getPos()
+		# adjust z-coord for visual accuracy
+		p[2] += .75
+		return p
+
+	def attack(self) -> None:
+		# do damage and remove 
+		if self.target.isAlive():
+			self.target.damage(self.damage)
+		self.despawn()
 
 class PursuitAttacker(ChaseTarget):
+	def __init__(model, node, target, damage, speed, hp):
+		assert hp > 0, f'PursuitAttacker cannot be spawned with 0 or less hp!'
+		# define dying tag and set to False until unit loses all HP
+		self.dying: bool = False
+		self.hp: float = hp
+										  #CollisionCapsule(ax, ay,    az,   bx, by,  bz, radius)
+		self.hitSphere: CollisionCapsule = CollisionCapsule(0., -0.25, 0.75, 0., 0.2, 0.75, .125)
+		hcnode = CollisionNode('{}-cnode'.format(str(self.node)))
+		hcnode.setIntoCollideMask(BitMask32(0x02))
+		self.hitNp: NodePath = self.node.attachNewNode(hcnode)
+		self.hitNp.node().addSolid(self.hitSphere)
+		ChaseTarget.__init__(model, node, target, damage, speed)
 
-class Sieger(PursuitAttacker):
+	def takeDamage(self):
+		# take the damage
+		self.hp -= dmg
 
+		# check that it's not already in the process of despawning
+		if not self.dying:
+			# flash red for a moment
+			if self.hp > 0: self.dmgSeq.start()
+			else: # die if hp is 0 or less
+				self.despawnDie()
+		# this seems to cause despawnDie to run twice, somehow. I should do proper garbage collection
+		# on these objects, and remove the enemies as well as their nodes
+
+	def despawn(self) -> None:
+		# clean up the node
+		#print(str(self.node) + " despawning")
+		# make sure this doesn't get called multiple times
+		self.dying = True
+		# clean up sequences
+		self.moveSeq.clearIntervals()
+		self.dmgSeq.clearIntervals()
+		# remove update task from taskMgr
+		if (base.taskMgr.getTasksNamed(str(self.node)+"_update") != None):
+			base.taskMgr.remove(base.taskMgr.getTasksNamed(str(self.node)+"_update"))
+		# clean up node
+		self.node.removeNode() 	
+
+	def kill(self) -> int:
+		# make sure this doesn't get called multiple times
+		self.dying = True
+		#print(str(self.node) + " dying")
+		# stop moving and don't blink
+		self.moveSeq.pause()
+		self.dmgSeq.pause()
+		# do a wee animation?
+		self.despawn()
+		return 1
+
+#class Sieger(PursuitAttacker):
+#	def __init__()
