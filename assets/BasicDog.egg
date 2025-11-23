@@ -1,0 +1,68 @@
+<Comment> {
+  "egg-texture-cards -o assets/BasicDog.egg -b -fps 0 assets/BasicDog-back.png assets/BasicDog-front.png assets/BasicDog-left.png assets/BasicDog-right.png"
+}
+<Texture> BasicDog-right {
+  "assets/BasicDog-right.png"
+}
+<Texture> BasicDog-left {
+  "assets/BasicDog-left.png"
+}
+<Texture> BasicDog-front {
+  "assets/BasicDog-front.png"
+}
+<Texture> BasicDog-back {
+  "assets/BasicDog-back.png"
+}
+<Group> {
+  <Switch> { 1 }
+  <VertexPool> vpool {
+    <Vertex> 0 {
+      -0.5 0.5 0
+      <UV> { 0 1 }
+    }
+    <Vertex> 1 {
+      -0.5 -0.5 0
+      <UV> { 0 0 }
+    }
+    <Vertex> 2 {
+      0.5 -0.5 0
+      <UV> { 1 0 }
+    }
+    <Vertex> 3 {
+      0.5 0.5 0
+      <UV> { 1 1 }
+    }
+  }
+  <Group> BasicDog-back {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { BasicDog-back }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+  <Group> BasicDog-front {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { BasicDog-front }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+  <Group> BasicDog-left {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { BasicDog-left }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+  <Group> BasicDog-right {
+    <Polygon> {
+      <RGBA> { 1 1 1 1 }
+      <TRef> { BasicDog-right }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { vpool } }
+    }
+  }
+}

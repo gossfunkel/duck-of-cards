@@ -21,9 +21,7 @@ class SpriteMod(FSM):
 		self.node.set_pos(pos)
 		self.model.wrtReparentTo(self.node)
 
-		self.still: bool
-		
-		self.still = False if speed else True
+		self.still: bool = False if speed else True
 
 		#self.pos: Vec3 = pos
 		self.speed: float = speed

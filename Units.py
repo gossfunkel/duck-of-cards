@@ -1,19 +1,20 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import NodePath
+from panda3d.core import NodePath, Vec3, CollisionCapsule, CollisionNode, BitMask32
 from SpriteModel import SpriteMod
+from direct.interval.IntervalGlobal import *
 
 class ChaseTarget():
-	def __init__(model, node, target, damage, speed):
+	def __init__(self, model, node, target, damage, speed):
 		assert model is not None, f'A model must be provided to ChaseTarget! Try hiding it after if you want it to be invisible'
 		assert target is not None, f'ChaseTarget requires a target!'
 		assert damage is not None, f'ChaseTarget requires damage'
 		assert speed is not None, f'ChaseTarget requires speed'
 
-		self.model = model
-		self.node: NodePath = render.attachNewNode("ChaseTargetNode") if node is None else self.node: NodePath = node
-		self.target = target
-		self.damage = damage
-		self.speed = speed
+		self.model: GeomNode = model
+		self.node: NodePath = render.attachNewNode("ChaseTargetNode") if node is None else node
+		self.target: NodePath = target
+		self.damage: float = damage
+		self.speed: float = speed
 
 		self.move = self.node.posInterval(.5, self.getTargetPos(), 
 											self.node.getPos(), fluid=1, blendType='noBlend')
@@ -35,7 +36,7 @@ class ChaseTarget():
 			self.target.damage(self.damage)
 			Sequence(wait(1),self.moveSeq).start()
 		else:
-			# TODO: probably shouldn't just automatically die
+			# TODO: probably shouldn't just automatically die if no target
 			self.despawn()
 
 	def despawn(self) -> None:
@@ -44,13 +45,13 @@ class ChaseTarget():
 		self.node.removeNode()
 
 class Seeker(ChaseTarget):
-	def __init__(model, node, target, damage, speed):
-		ChaseTarget.__init__(model, node, target, damage, speed)
+	def __init__(self, model, node, target, damage, speed):
+		ChaseTarget.__init__(self, model, node, target, damage, speed)
 
 	def getTargetPos(self) -> Vec3:
 		# get up-to-date position
 		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
-		p: Vec3 = self.enemy.node.getPos()
+		p: Vec3 = self.target.node.getPos()
 		# adjust z-coord for visual accuracy
 		p[2] += .75
 		return p
@@ -62,7 +63,8 @@ class Seeker(ChaseTarget):
 		self.despawn()
 
 class PursuitAttacker(ChaseTarget):
-	def __init__(model, node, target, damage, speed, hp):
+	# wondering whether to split some of this off as a 'Targetable' class, but I think all of these are both
+	def __init__(self, model, node, target, damage, speed, hp):
 		assert hp > 0, f'PursuitAttacker cannot be spawned with 0 or less hp!'
 		# define dying tag and set to False until unit loses all HP
 		self.dying: bool = False
@@ -73,7 +75,7 @@ class PursuitAttacker(ChaseTarget):
 		hcnode.setIntoCollideMask(BitMask32(0x02))
 		self.hitNp: NodePath = self.node.attachNewNode(hcnode)
 		self.hitNp.node().addSolid(self.hitSphere)
-		ChaseTarget.__init__(model, node, target, damage, speed)
+		ChaseTarget.__init__(self, model, node, target, damage, speed)
 
 	def takeDamage(self):
 		# take the damage
@@ -94,8 +96,10 @@ class PursuitAttacker(ChaseTarget):
 		# make sure this doesn't get called multiple times
 		self.dying = True
 		# clean up sequences
-		self.moveSeq.clearIntervals()
-		self.dmgSeq.clearIntervals()
+		if self.moveSeq is not None:
+			self.moveSeq.clearIntervals()
+		#if self.dmgSeq is not None:
+		#	self.dmgSeq.clearIntervals()
 		# remove update task from taskMgr
 		if (base.taskMgr.getTasksNamed(str(self.node)+"_update") != None):
 			base.taskMgr.remove(base.taskMgr.getTasksNamed(str(self.node)+"_update"))
@@ -115,12 +119,3 @@ class PursuitAttacker(ChaseTarget):
 
 #class Sieger(PursuitAttacker):
 #	def __init__()
-
-class BasicEnemy(PursuitAttacker, Seeker, SpriteMod):
-	def __init__(self, pos):
-		self.name: str = "BasicDog"
-		self.speed: float = 1.0
-		SpriteMod.__init__(self, self.name, pos, self.speed)
-		self.damage: float = 5.0
-		self.hp: float = 20.0
-		PursuitAttacker.__init__(self, self.model, self.node, (0.,0.,0.), self.damage, self.speed, self.hp)

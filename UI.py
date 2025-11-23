@@ -1,5 +1,5 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import TextNode, CardMaker
+from panda3d.core import NodePath, TextNode, CardMaker, Texture, TransparencyAttrib
 from direct.gui.DirectGui import *
 from direct.gui.OnscreenImage import OnscreenImage
 
@@ -7,7 +7,7 @@ class UI():
 	def __init__(self) -> None:
 		# show remaining hit points
 		self.castleHPdisplay: TextNode = TextNode('castle HP display')
-		self.castleHPdisplay.setText(str(castleHP))
+		self.castleHPdisplay.setText(str(base.getCastleHP()))
 		self.castleHPdisplay.setFrameColor(0, 0, 1, 1)
 		self.castleHPdisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
 		self.castleTextNP: NodePath = aspect2d.attachNewNode(self.castleHPdisplay)
@@ -16,7 +16,7 @@ class UI():
 
 		# show current enemy wave
 		self.waveDisplay: TextNode = TextNode('wave number display')
-		self.waveDisplay.setText("Wave: " + str(waveNum))
+		self.waveDisplay.setText("Wave: " + str(base.getWaveNum()))
 		self.waveDisplay.setFrameColor(1, 0, 1, 1)
 		self.waveDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
 		self.waveDisplayNP: NodePath = aspect2d.attachNewNode(self.waveDisplay)
@@ -25,7 +25,7 @@ class UI():
 
 		# show player gold
 		self.goldDisplay: TextNode = TextNode('player gold display')
-		self.goldDisplay.setText("GP: " + str(playerGold))
+		self.goldDisplay.setText("GP: " + str(base.getPlayerGold()))
 		self.goldDisplay.setFrameColor(1, 1, 0, 1)
 		self.goldDisplay.setFrameAsMargin(0.2, 0.2, 0.1, 0.1)
 		self.goldDisplayNP: NodePath = aspect2d.attachNewNode(self.goldDisplay)
@@ -133,14 +133,14 @@ class UI():
 
 	def update(self) -> None:
 		# update hp display
-		self.castleHPdisplay.setText(str(castleHP) + "hp")
-		if castleHP < 25:
+		self.castleHPdisplay.setText(str(base.getCastleHP()) + "hp")
+		if base.getCastleHP() < 25:
 			self.castleHPdisplay.setFrameColor(1, 0, 0, 1)
 			# update castle appearance
 		# update wave display
-		self.waveDisplay.setText("Wave: " + str(waveNum))
+		self.waveDisplay.setText("Wave: " + str(base.getWaveNum()))
 		# update player gold points display
-		self.goldDisplay.setText("GP: " + str(playerGold))
+		self.goldDisplay.setText("GP: " + str(base.getPlayerGold()))
 
 	def drawText(self, dialogueString) -> NodePath:
 		# generate text

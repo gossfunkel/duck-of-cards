@@ -13,8 +13,7 @@ from direct.fsm.FSM import FSM
 from random import randint
 from math import sqrt
 import SpriteModel as spritem
-from UI import UI
-import Buildings
+import UI, Buildings, Projectiles, Units, Enemies
 
 config_vars: str = """
 win-size 1200 800
@@ -507,13 +506,13 @@ class DuckOfCards(ShowBase):
 
 		# load a random duck as a placeholder for civilian ducks
 		#self.duckNp = self.render.attachNewNode("duck_models")
-		randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(0.,-2.,0.), .1)
+		#randomDuck = spritem.NormalInnocentDuck("an_innocent_duck", Vec3(0.,-2.,0.), .1)
 
 		# initialise the finite-state machine
 		self.fsm: GamestateFSM = GamestateFSM()
 
 		# initialise the UI manager
-		self.ui: UI = UI()
+		self.ui: UI = UI.UI()
 
 		if (testing):
 			minimapMaker: CardMaker = CardMaker('minimap')
@@ -783,12 +782,8 @@ class DuckOfCards(ShowBase):
 				# tile is pickable: place tower and exit tile picker state
 				#print("ONMOUSE HIT " + str(u) + ", " + str(v))
 				# TODO: allow spawning of multiple tower types (tower spawn buffer?)
-				if self.pickTowerType == "basic":
-					self.spawnTower(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
-				elif self.pickTowerType == "magic":
-					self.spawnMagicTower(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
-				else:
-					raise ValueError("Tower type not properly initialised before tower picked")
+				assert self.pickTowerType is not None, f"Tower type not properly initialised before tower picked"
+				self.pickTowerType(self.hitTile.getTag('u'),self.hitTile.getTag('v'))
 				self.highlightTile.setPos(0,0,-1)
 				self.hitTile = None
 				self.fsm.demand('Gameplay')
@@ -882,8 +877,8 @@ class DuckOfCards(ShowBase):
 			#self.camera.setScale(self.camera.getScale()*1.2)
 			self.camera.setPos(self.camera.getPos() + Vec3(0,-1,1))
 	
-	def spawnEnemy(self, pos) -> spritem.Enemy: 				# spawn an individual creep
-		newEnemy = spritem.Enemy("enemy-" + str(self.enemyCount), pos, 1.)
+	def spawnEnemy(self, pos) -> Enemies.Enemy: 				# spawn an individual creep
+		newEnemy = Enemies.BasicEnemy(pos)
 		self.enemyCount += 1
 		self.enemies.append(newEnemy)
 		return newEnemy
@@ -932,7 +927,7 @@ class DuckOfCards(ShowBase):
 		global playerGold
 		if playerGold >= 10:
 			playerGold -= 10
-			self.pickTowerType = "basic"
+			self.pickTowerType = spawnTower
 			self.fsm.demand('PickTower')
 			return True
 		else:
@@ -944,7 +939,7 @@ class DuckOfCards(ShowBase):
 		global playerGold
 		if playerGold >= 15:
 			playerGold -= 15
-			self.pickTowerType = "magic"
+			self.pickTowerType = spawnMagicTower
 			self.fsm.demand('PickTower')
 			return True
 		else:
@@ -1010,6 +1005,15 @@ class DuckOfCards(ShowBase):
 	def getTilePos(self, u, v) -> Vec3:
 		tile = self.getTile(u,v)
 		return tile.getPos() + Vec3(1.,0.,0.)
+
+	def getCastleHP(self) -> float:
+		return castleHP
+
+	def getPlayerGold(self) -> int:
+		return playerGold
+
+	def getWaveNum(self) -> int:
+		return waveNum
 
 	def saveGameState(self, mapImg, filename) -> bool:
 		# write the mapImg to a file at filename

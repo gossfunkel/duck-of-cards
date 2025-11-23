@@ -2,6 +2,7 @@ from direct.showbase.ShowBase import ShowBase
 from panda3d.core import BitMask32, CollisionNode, CollisionSphere, CollisionTraverser, CollisionHandlerQueue
 from panda3d.core import Vec3, ModelPool
 from direct.interval.IntervalGlobal import *
+import Projectiles
 import numpy as np
 import tools
 
@@ -20,78 +21,17 @@ class PlayerCastle():
 
 		#self.node.ls()
 
-	def takeDmg(self) -> None:
+	def damage(self, dmg) -> None:
 		# take damage
-		base.dmgCastle(5.0)
+		base.dmgCastle(dmg)
 		# flash red for a moment TODO don't use setColor, have a shader or something
 		Sequence(Func(self.node.setColor,1.2,0.1,0.1,1.),
 				Wait(0.1),
 				Func(self.node.setColor,0.3,0.35,0.6,1.)).start()
-		base.mapImg.setRed(int(base.width/2),int(base.length/2),base.mapImg.getRed(int(base.width/2),int(base.length/2))-0.05)
+		base.mapImg.setRed(int(base.width/2),int(base.length/2),base.mapImg.getRed(int(base.width/2),int(base.length/2))- dmg/100.)
 
-class Arrow():
-	def __init__(self, pos, enemyId) -> None:
-		self.model: GeomNode = base.loader.loadModel("assets/arrow2.gltf")
-		self.node: NodePath = render.attachNewNode("arrow")
-		self.model.wrtReparentTo(self.node)
-		self.model.setScale(0.06)
-		self.node.setScale(0.6)
-		self.enemy: spritem.Enemy = base.enemies[int(enemyId)]
-		self.damage: float = 10.0
-		self.node.setP(30)
-		self.node.setY(-45) 
-		# modified origin for realism
-		self.node.setPos(pos + Vec3(-.1, 0., .7))
-		self.node.lookAt(self.getTargetPos())
-		#projectileNp = render.attachNewNode(ActorNode('projectile'))
-		# self.cnode = CollisionNode('arrowColNode')
-		# self.cnode.setFromCollideMask(BitMask32(0x00))
-		# self.fromObject = self.node.attachNewNode(self.cnode)
-		# self.fromObject.node().addSolid(CollisionSphere(0, 0, 0, .2))
-		#self.fromObject.show()
-		self.move = self.node.posInterval(.5, self.getTargetPos(), 
-											self.node.getPos(), fluid=1, blendType='noBlend')
-
-		# on arrival/despawn, do damage to enemy
-		#self.despawnInt = Func(self.despawn)
-		self.moveSeq = Sequence(
-			self.move,
-			#self.despawnInt
-			Func(self.despawn)
-		).start()
-
-	def getTargetPos(self) -> Vec3:
-		# get up-to-date position
-		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
-		p: Vec3 = self.enemy.node.getPos()
-		# adjust for visual accuracy
-		#p[0] += .55
-		#p[1] -= .3
-		p[2] += .75
-		return p
-
-	def despawn(self) -> None:
-		# do damage and remove
-		self.enemy.damage(self.damage)
-		ModelPool.releaseModel("assets/arrow.gltf")
-		self.node.removeNode()
-
-class Fireball(Arrow):
-	def __init__(self, pos, enemyId) -> None:
-		Arrow.__init__(self, pos, enemyId)
-		self.node.removeNode()
-		ModelPool.releaseModel("assets/arrow.gltf")
-		self.model: GeomNode = base.loader.loadModel("assets/fireball.egg")
-		self.node: NodePath = render.attachNewNode("fireball")
-		self.model.wrtReparentTo(self.node)
-		self.model.setScale(0.06)
-		self.node.setScale(0.6)
-		self.node.setP(30)
-		self.node.setY(-45) 
-		# modified origin for realism
-		self.node.setPos(pos + Vec3(-.1, 0., .7))
-		self.node.lookAt(self.getTargetPos())
-		self.damage: float = 15.0
+	def isAlive(self) -> bool:
+		return True if base.getCastleHP() > 0 else False
 
 class Tower():
 	def __init__(self, pos, u ,v) -> None:
@@ -198,11 +138,11 @@ class Tower():
 			self.onCD = True
 			self.cdSeq.start()
 
-	def launchProjectiles(self, enemy) -> Arrow:
+	def launchProjectiles(self, enemy) -> Projectiles.Arrow:
 		#print("firing at " + enemy)
 		newArrows = []
 		for _ in range(self.numShots):
-			newArrows.append(Arrow(self.node.getPos(), enemy))
+			newArrows.append(Projectiles.Arrow(self.node.getPos(), enemy))
 		return newArrows
 
 class MagicTower(Tower):
@@ -212,9 +152,9 @@ class MagicTower(Tower):
 		ModelPool.releaseModel("assets/tower.gltf")
 		self.damageType = "magic"
 
-	def launchProjectiles(self, enemy) -> Fireball:
+	def launchProjectiles(self, enemy) -> Projectiles.Fireball:
 		#print("firing at " + enemy)
 		newFireballs = []
 		for _ in range(self.numShots):
-			newFireballs.append(Fireball(self.node.getPos(), enemy))
+			newFireballs.append(Projectiles.Fireball(self.node.getPos(), enemy))
 		return newFireballs
