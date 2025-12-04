@@ -19,7 +19,7 @@ class SpriteMod(FSM):
 		#for x in self.tsmSwitch.children: print(x)
 		self.node: NodePath = render.attachNewNode("testspritemod")
 		self.node.set_pos(pos)
-		self.model.wrtReparentTo(self.node)
+		self.model.reparentTo(self.node)
 
 		self.still: bool = False if speed else True
 

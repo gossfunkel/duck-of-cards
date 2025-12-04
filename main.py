@@ -94,11 +94,12 @@ waveNum: int = 0
 	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
 
 # TODO:
-	# = BUGFIX: boolean data not properly read from mapImg alpha channel, pickable bit not working for pond
 	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck). n.b.
 		# pausing at the wrong time causes hundreds of dogs to spawn (!!)
 	# 
 	# -> move inline coded dialogue to a data file
+	# -> add proper logging
+	#
 	# --- PHASE 1) Basic game mechanics
 	# - improve card menu and add more cards
 	# - add more enemies and bigger waves
@@ -555,7 +556,7 @@ class DuckOfCards(ShowBase):
 			self.fsm.demand('Gameplay')
 
 	# LOAD-IN
-	def createMap(self, width, length) -> PNMImage: 	# generate pickable tiles to place towers on
+	def createMap(self, width: int, length: int) -> PNMImage: 	# generate pickable tiles to place towers on
 		# generate ground tile model and instance, creating node map
 		self.mapImg: PNMImage = PNMImage(width,length,4,255)
 		self.mapImg.fill(1.0,0.0,0.0)
@@ -927,7 +928,7 @@ class DuckOfCards(ShowBase):
 		global playerGold
 		if playerGold >= 10:
 			playerGold -= 10
-			self.pickTowerType = spawnTower
+			self.pickTowerType = self.spawnTower
 			self.fsm.demand('PickTower')
 			return True
 		else:
@@ -939,7 +940,7 @@ class DuckOfCards(ShowBase):
 		global playerGold
 		if playerGold >= 15:
 			playerGold -= 15
-			self.pickTowerType = spawnMagicTower
+			self.pickTowerType = self.spawnMagicTower
 			self.fsm.demand('PickTower')
 			return True
 		else:

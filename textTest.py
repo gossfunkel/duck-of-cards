@@ -175,7 +175,10 @@ class TextTest(ShowBase):
 		# backPath.reparent_to(testSpriteMod)
 		# backPath.hide()
 		# rightPath.show()
-		tsmTest = SpriteMod("testspritemod", (0,0,0), 0)
+		#tsmTest = SpriteMod("testspritemod", (0,0,0), 0)
+
+		ball = loader.loadModel("assets/fireball.egg")
+		ball.wrtReparentTo(render)
 		
 		#tsmTest.request('Left')
 

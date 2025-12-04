@@ -1,5 +1,6 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import NodePath, TextNode, CardMaker, Texture, TransparencyAttrib
+from direct.interval.IntervalGlobal import *
 from direct.gui.DirectGui import *
 from direct.gui.OnscreenImage import OnscreenImage
 

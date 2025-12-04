@@ -2,34 +2,37 @@ from direct.showbase.ShowBase import ShowBase
 from panda3d.core import NodePath, Vec3, CollisionCapsule, CollisionNode, BitMask32
 from SpriteModel import SpriteMod
 from direct.interval.IntervalGlobal import *
+import numpy as np
 
 class ChaseTarget():
-	def __init__(self, model, node, target, damage, speed):
-		assert model is not None, f'A model must be provided to ChaseTarget! Try hiding it after if you want it to be invisible'
+	def __init__(self, model, target, damage, speed, node=None, move=None):
+		assert model is not None, f'A model must be provided to ChaseTarget! Try hiding it after construction if you want it to be invisible'
 		assert target is not None, f'ChaseTarget requires a target!'
 		assert damage is not None, f'ChaseTarget requires damage'
 		assert speed is not None, f'ChaseTarget requires speed'
 
 		self.model: GeomNode = model
-		self.node: NodePath = render.attachNewNode("ChaseTargetNode") if node is None else node
 		self.target: NodePath = target
 		self.damage: float = damage
 		self.speed: float = speed
-
+		# default construction of new node if not passed
+		self.node: NodePath = render.attachNewNode("ChaseTargetNode") if node is None else node
+		# default move interval if none passed as args
 		self.move = self.node.posInterval(.5, self.getTargetPos(), 
-											self.node.getPos(), fluid=1, blendType='noBlend')
+										self.node.getPos(), fluid=1, blendType='noBlend') if move is None else move
 
 		# on arrival/despawn, do damage to enemy
 		#self.despawnInt = Func(self.despawn)
-		self.moveSeq = Sequence(
+		self.moveSeq: Sequence = Sequence(
 			self.move,
-			#self.despawnInt
 			Func(self.attack)
-		).start()
+		)
+		self.moveSeq.start()
 
 	def getTargetPos(self) -> Vec3:
 		# gets overridden in subclasses
-		return self.target
+		#print(f"ChaseTarget has {self.target.getPos()} as target")
+		return self.target.getPos()
 
 	def attack(self) -> None:
 		if self.target.isAlive():
@@ -41,12 +44,13 @@ class ChaseTarget():
 
 	def despawn(self) -> None:
 		# do damage and remove TODO fix this
-		ModelPool.releaseModel(self.model)
+		print(f"ChaseTarget despawning at {self.node.getPos()}")
 		self.node.removeNode()
+		#base.ModelPool.releaseModel(self.model)
 
 class Seeker(ChaseTarget):
-	def __init__(self, model, node, target, damage, speed):
-		ChaseTarget.__init__(self, model, node, target, damage, speed)
+	def __init__(self, model, target, damage, speed, node):
+		ChaseTarget.__init__(self, model, target, damage, speed, node)
 
 	def getTargetPos(self) -> Vec3:
 		# get up-to-date position
@@ -54,17 +58,19 @@ class Seeker(ChaseTarget):
 		p: Vec3 = self.target.node.getPos()
 		# adjust z-coord for visual accuracy
 		p[2] += .75
+		#print(f"Seeker targeting {p}")
 		return p
 
 	def attack(self) -> None:
 		# do damage and remove 
 		if self.target.isAlive():
 			self.target.damage(self.damage)
+		#print(f"Seeker attacking at {self.node.getPos()}")
 		self.despawn()
 
 class PursuitAttacker(ChaseTarget):
 	# wondering whether to split some of this off as a 'Targetable' class, but I think all of these are both
-	def __init__(self, model, node, target, damage, speed, hp):
+	def __init__(self, model, target, damage, speed, hp, node):
 		assert hp > 0, f'PursuitAttacker cannot be spawned with 0 or less hp!'
 		# define dying tag and set to False until unit loses all HP
 		self.dying: bool = False
@@ -75,7 +81,14 @@ class PursuitAttacker(ChaseTarget):
 		hcnode.setIntoCollideMask(BitMask32(0x02))
 		self.hitNp: NodePath = self.node.attachNewNode(hcnode)
 		self.hitNp.node().addSolid(self.hitSphere)
-		ChaseTarget.__init__(self, model, node, target, damage, speed)
+
+		# calculate distance to target in order to calculate time-length of move Interval
+		dist = self.getTargetPos() - node.getPos()
+		dist = np.sqrt(dist.x * dist.x + dist.y * dist.y + dist.z * dist.z)
+		# set Interval and pass to ChaseTarget constructor to load into Sequence
+		self.move = self.node.posInterval(dist/speed, self.getTargetPos(), 
+											self.node.getPos(), fluid=1, blendType='noBlend')
+		ChaseTarget.__init__(self, model, target, damage, speed, node, self.move)
 
 	def takeDamage(self):
 		# take the damage
@@ -94,6 +107,7 @@ class PursuitAttacker(ChaseTarget):
 		# clean up the node
 		#print(str(self.node) + " despawning")
 		# make sure this doesn't get called multiple times
+		print(f"PursuitAttacker despawning at {self.node.getPos()}")
 		self.dying = True
 		# clean up sequences
 		if self.moveSeq is not None:

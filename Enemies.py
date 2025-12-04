@@ -2,11 +2,11 @@ from direct.showbase.ShowBase import ShowBase
 from Units import PursuitAttacker, Seeker
 from SpriteModel import SpriteMod
 
-class Enemy(SpriteMod, PursuitAttacker): 
+class Enemy(SpriteMod, PursuitAttacker, Seeker): 
 	def __init__(self, model, node, damage, speed, hp) -> None:
-		target: NodePath = base.castle
+		self.target: NodePath = base.castle
 		#print(target)
-		PursuitAttacker.__init__(self, model, node, target, damage, speed, hp)
+		PursuitAttacker.__init__(self, model, self.target, damage, speed, hp, node)
 
 	def kill(self) -> int:
 		# make sure this doesn't get called multiple times
@@ -21,10 +21,10 @@ class Enemy(SpriteMod, PursuitAttacker):
 		self.despawn()
 		return 1
 
-class BasicEnemy(Enemy, Seeker):
+class BasicEnemy(Enemy):
 	def __init__(self, pos) -> None:
 		self.name: str = "BasicDog"
-		self.speed: float = 0.01
+		self.speed: float = 1.
 		SpriteMod.__init__(self, self.name, pos, self.speed)
 		self.damage: float = 5.0
 		self.hp: float = 20.0
