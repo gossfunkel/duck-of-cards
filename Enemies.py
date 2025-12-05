@@ -1,4 +1,5 @@
 from direct.showbase.ShowBase import ShowBase
+from panda3d.core import Vec3
 from Units import PursuitAttacker, Seeker
 from SpriteModel import SpriteMod
 
@@ -28,4 +29,5 @@ class BasicEnemy(Enemy):
 		SpriteMod.__init__(self, self.name, pos, self.speed)
 		self.damage: float = 5.0
 		self.hp: float = 20.0
+		pos += Vec3(0.,0.,1.)
 		Enemy.__init__(self, self.model, self.node, self.damage, self.speed, self.hp)

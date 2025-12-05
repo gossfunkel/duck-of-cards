@@ -121,7 +121,7 @@ class Tower():
 		#print("scanning...")
 
 		if (self.detectorQueue.getNumEntries() > 0):
-			#print("enemy detected!")
+			print("enemy detected!")
 			# sort queue of detected solids by closest (n.b. edit here for priority options)
 			self.detectorQueue.sortEntries()
 
@@ -139,7 +139,7 @@ class Tower():
 			self.cdSeq.start()
 
 	def launchProjectiles(self, enemy) -> Projectiles.Arrow:
-		#print("firing at " + enemy)
+		print(f"firing at {enemy}")
 		newArrows = []
 		for _ in range(self.numShots):
 			newArrows.append(Projectiles.Arrow(self.node.getPos(), enemy))
@@ -151,6 +151,11 @@ class MagicTower(Tower):
 		self.node.removeNode()
 		ModelPool.releaseModel("assets/tower.gltf")
 		self.damageType = "magic"
+		towerModel: NodePath = base.loader.loadModel("assets/magicTower.gltf")
+		self.node: NodePath = render.attachNewNode("tower")
+		self.node.setTag("u",str(u))
+		self.node.setTag("v",str(v))
+		towerModel.wrtReparentTo(self.node)
 
 	def launchProjectiles(self, enemy) -> Projectiles.Fireball:
 		#print("firing at " + enemy)

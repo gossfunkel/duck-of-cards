@@ -1,11 +1,13 @@
 from direct.showbase.ShowBase import ShowBase
-from Units import Seeker
+import units as unit
 from panda3d.core import NodePath
 #from dataclasses import dataclass
 
-class Projectile(Seeker):
+class Projectile():
 	def __init__(self, model, target, damage, speed, node):
-		Seeker.__init__(self, model, target, damage, speed, node)
+		unit.ChaseTarget.__init__(self, model, target, damage, speed, node)
+		# TODO localise variables here
+		self.model: GeomNode = model
 		# TODO explosion on collision?
 
 #@dataclass

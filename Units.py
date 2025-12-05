@@ -48,6 +48,7 @@ class ChaseTarget():
 		self.node.removeNode()
 		#base.ModelPool.releaseModel(self.model)
 
+# deprecated - split between Enemy and Projectile
 class Seeker(ChaseTarget):
 	def __init__(self, model, target, damage, speed, node):
 		ChaseTarget.__init__(self, model, target, damage, speed, node)
@@ -57,7 +58,7 @@ class Seeker(ChaseTarget):
 		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
 		p: Vec3 = self.target.node.getPos()
 		# adjust z-coord for visual accuracy
-		p[2] += .75
+		p[2] += .5
 		#print(f"Seeker targeting {p}")
 		return p
 
@@ -68,6 +69,7 @@ class Seeker(ChaseTarget):
 		#print(f"Seeker attacking at {self.node.getPos()}")
 		self.despawn()
 
+# deprecated - all of this can be in Enemy
 class PursuitAttacker(ChaseTarget):
 	# wondering whether to split some of this off as a 'Targetable' class, but I think all of these are both
 	def __init__(self, model, target, damage, speed, hp, node):
