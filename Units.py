@@ -49,25 +49,18 @@ class ChaseTarget():
 		#base.ModelPool.releaseModel(self.model)
 
 # deprecated - split between Enemy and Projectile
-class Seeker(ChaseTarget):
-	def __init__(self, model, target, damage, speed, node):
-		ChaseTarget.__init__(self, model, target, damage, speed, node)
+# class Seeker(ChaseTarget):
+# 	def __init__(self, model, target, damage, speed, node):
+# 		ChaseTarget.__init__(self, model, target, damage, speed, node)
 
-	def getTargetPos(self) -> Vec3:
-		# get up-to-date position
-		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
-		p: Vec3 = self.target.node.getPos()
-		# adjust z-coord for visual accuracy
-		p[2] += .5
-		#print(f"Seeker targeting {p}")
-		return p
-
-	def attack(self) -> None:
-		# do damage and remove 
-		if self.target.isAlive():
-			self.target.damage(self.damage)
-		#print(f"Seeker attacking at {self.node.getPos()}")
-		self.despawn()
+# 	def getTargetPos(self) -> Vec3:
+# 		# get up-to-date position
+# 		# TODO - TAKE LEAD POSITION IN PURSUIT (i.e. arrows should fly to where enemies are going)
+# 		p: Vec3 = self.target.node.getPos()
+# 		# adjust z-coord for visual accuracy
+# 		p[2] += .5
+# 		#print(f"Seeker targeting {p}")
+# 		return p
 
 # deprecated - all of this can be in Enemy
 class PursuitAttacker(ChaseTarget):

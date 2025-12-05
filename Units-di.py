@@ -5,13 +5,44 @@ from __future__ import annotations
 from typing import Any
 from collections.abc import Callable
 
-class ChaseTarget():
-	self.model: GeomNode
+class Unit():
+	def __init__(self,model:GeomNode,node:NodePath,damage:float,speed:float)
+	self.model: GeomNode = model
 	self.node: NodePath
 	self.target: NodePath
 	self.damage: float
 	self.speed: float
 	self.moveSeq: Sequence
+
+	# pretty sure this is terrible code security/privacy but it feels like a good way
+	# 	to inject dependencies at runtime
+	def __call__(self, func: Callable[[Any],Any], arg:Any):
+		# execute function with arg - e.g. damage(arrow) to do damage via an arrow
+		output = func(arg)
+		if type(output) == Callable[[Any],Any]:
+			output = output()
+		return output
+
+def despawn(self:Unit) -> None:
+	# clean up the node
+	#print(str(self.node) + " despawning")
+	# make sure this doesn't get called multiple times
+	print(f"PursuitAttacker despawning at {self.node.getPos()}")
+	self.dying = True
+	# clean up sequences
+	if self.moveSeq is not None:
+		self.moveSeq.clearIntervals()
+	#if self.dmgSeq is not None:
+	#	self.dmgSeq.clearIntervals()
+	# remove update task from taskMgr
+	if (base.taskMgr.getTasksNamed(str(self.node)+"_update") != None):
+		base.taskMgr.remove(base.taskMgr.getTasksNamed(str(self.node)+"_update"))
+	# clean up node
+	self.node.removeNode() 	
+
+def hit(self:Unit, hitter:Unit):
+	self.hp -= hitter.damage
+	return despawn if self.hp <= 0 else self.hp
 
 def getTargetPos(unit:ChaseTarget) -> Vec3:
 	# TODO handle different targets differently (mapping needed??)
@@ -46,18 +77,3 @@ def chaseTarget(unit:ChaseTarget, targetNode: NodePath) -> Sequence:
 	)
 	moveSeq.start()
 	return moveSeq
-
-def accumulate(x: int) -> int:
-	return x + 1
-
-def double(x: int) -> int:
-	return x * 2
-
-def main() -> None:
-	funky = Functor(5)
-	funky = funky(accumulate)(double)
-	print(funky)
-
-if __name__ == '__main__':
-	#print("running")
-	main()
