@@ -34,18 +34,16 @@ class PlayerCastle():
 		return True if base.getCastleHP() > 0 else False
 
 class Tower():
-	def __init__(self, pos, u ,v) -> None:
-		towerModel: NodePath = base.loader.loadModel("assets/tower.gltf")
+	def __init__(self, pos, u, v, model=None, node=None, projectile=None) -> None:
+		towerModel: NodePath = base.loader.loadModel("assets/tower.gltf") if model is None else model
 		print("spawning tower at " + str(pos))
 		towerModel.setScale(0.2)
 		#towerModel.setP(90)
-		self.node: NodePath = render.attachNewNode("tower")
+		self.node: NodePath = render.attachNewNode("tower") if node is None else node
 		self.node.setTag("u",str(u))
 		self.node.setTag("v",str(v))
 		towerModel.wrtReparentTo(self.node)
 		self.landPosition: Vec3 = pos
-		#self.u: int = u
-		#self.v: int = v
 		self.node.setPos(pos.getX(),pos.getY(),pos.getZ() + .04)
 		#self.node.setScale()
 		self.rateOfFire: float = 1.0
@@ -54,7 +52,7 @@ class Tower():
 		self.numShots: int = 1
 		self.cooldown: float = 3.0
 		self.onCD: bool = True
-		self.damageType: str = "physical"
+		self.projectile: Projectile = Projectiles.Arrow if projectile is None else projectile
 
 		self.vel: Vec3 = Vec3(0.,0.,-0.2)
 
@@ -140,26 +138,16 @@ class Tower():
 
 	def launchProjectiles(self, enemy) -> Projectiles.Arrow:
 		print(f"firing at {enemy}")
-		newArrows = []
+		newProjectiles = []
 		for _ in range(self.numShots):
-			newArrows.append(Projectiles.Arrow(self.node.getPos(), enemy))
-		return newArrows
+			newProjectiles.append(self.projectile(self.node.getPos(), enemy))
+		return newProjectiles
 
 class MagicTower(Tower):
 	def __init__(self, pos, u, v) -> None:
-		Tower.__init__(self, pos, u, v)
-		self.node.removeNode()
-		ModelPool.releaseModel("assets/tower.gltf")
-		self.damageType = "magic"
 		towerModel: NodePath = base.loader.loadModel("assets/magicTower.gltf")
-		self.node: NodePath = render.attachNewNode("tower")
-		self.node.setTag("u",str(u))
-		self.node.setTag("v",str(v))
-		towerModel.wrtReparentTo(self.node)
-
-	def launchProjectiles(self, enemy) -> Projectiles.Fireball:
-		#print("firing at " + enemy)
-		newFireballs = []
-		for _ in range(self.numShots):
-			newFireballs.append(Projectiles.Fireball(self.node.getPos(), enemy))
-		return newFireballs
+		node: NodePath = render.attachNewNode("tower")
+		projectile = Projectiles.Fireball
+		Tower.__init__(self, pos, u, v, towerModel, node, projectile)
+		# self.node.removeNode()
+		# ModelPool.releaseModel("assets/tower.gltf")
