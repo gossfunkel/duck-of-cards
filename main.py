@@ -28,116 +28,35 @@ threading-model Cull/Draw
 loadPrcFileData("", config_vars)
 
 # GLOBAL VARIABLES
-
 testing: bool = True
 castleHP: float = 100.0
 playerGold: int = 10 if not testing else 50
 waveNum: int = 0
 
-# GAME OPENING / TUTORIAL
-	# <intro dialogue sequence>
-	# <Enter PickTower; user places first tower>
-	# dialogue sequence 2, after wave 1:
-	# "Bweeeell, you took care of them. Perhaps there will be a place for you in my fine little fiefdom."
-	# "The fine ducks of the pond have been set upon by dogs for months, since they found our new home."
-	# "Of course, I keep all the fiefdom safe with my mighty magic cards!"
-	# "That is, here in the castle, where I won't be set upon by dogs..."
-	# "So what do you say- are you going to abandon these poor townspeople to their fate, or 
-	# face your duty to duke and for duck's sake? Will you take the cards out and help build our defenses?"
-	# > i guess? Is there somewhere I can sleep?
-	# "For now, you may join us in the Castle of Pond Duchy, our bastion in the quackmire."
-	# "When these brutal invasion forces are pushed back, we can "
-	# <Level 1 splash. Initial card offer. Timer for first wave starts as soon as card picked>
+def pauseAllSequences() -> bool:
+	# try
+	base.fsm.waveSchedule.pause()
+	if (base.spawnSeq != None):
+		base.spawnSeq.pause()
+	for enemy in base.enemies:
+		enemy.moveSeq.pause()
+	for tower in base.towers:
+		tower.scanSeq.pause()
+	# except
+	return True
 
-# CLIMAX CUTSCENE
-	# 
-	# > There isn't even such a think as a Duke of Cards! There's the King, the Queen, and the Ja-
-	# "SILENCE! You have betrayed my trust, traveller, and now it is time for you to travel on."
-	# > What if I don't want to?
-	# "Don't- SQUAAAH the insolence! You walk into my fiefdom, use my magic, and now you spurn and insult me."
-	# "I see this fiefdom requires a firmer hand than I have carried so far."
-	# "Very well- if you won't accept the power I offer, I shall hold it myself..."
-	# [Duke casts the card and things go dark]
-	# > ...
-	# > Um... duke?
-	# > ...
-	# > Hello?
-	# // YOU HAVE PLAYED WITH POWERS YOU DO NOT UNDERSTAND // [screenshake]
-	# > Who sai-
-	# // YOU WILL COME TO KNOW WHY THE LIKES OF YOU AND YOUR FEEBLE FEATHERED FRIEND 
-	# 		DO NOT RECOGNISE WHAT YOU TOYED WITH //
-	# > He's not my friend
-	# // THROUGH HIM YOU KNOW MORE FELLOWSHIP THAN YOU HAVE WITH ANYTHING YOU WILL SEE FROM NOW //
-	# // WELCOME TO THE DAWN OF YOUR WORLD'S UNMAKING //
-	# [screen brightens and lighting is changed for purple, after a moment there's a rumble]
-	# [the castle erupts and a portal tears open in its place]
-	# > ...
-	# [Duke [Evil] sprite appears]
-	# > You! What did you do?!
-	# // THE TIME FOR NEGOTIATION IS PAST // WE CAN SEE YOU WILL BE NO HINDRANCE //
-	# > What are you?
-	# // WE ARE THE RAW VIOLENCE THAT YEARNS WITHIN EVERY FIBRE TO ESCAPE FROM ITS FICKLE CAGE //
-	# // WE ARE THE FIRE THAT YOU HOLD TO YOUR ENEMIES FACE, THE FIRE THAT PROMISES YOUR WORLD TO THE ASHES //
-	# // YOU WILL TASTE THE PRICE OF POWER //
-	# [Next round begins; current defenses should hold]
-	# [after that round, ally appears]
-	# "Traveller! What's going on? What happened to the castle??"
-	# > The Duke used some kind of powerful card, but I think he was tricked into releasing some kind of... demons.
-	# "DEMONS?!? You mean, those things that just attacked us?"
-	# > They came from the portal. I think there will be more. Perhaps much more.
-	# "Wh- what do we do?!"
-	# > Do we have any more cards? Or anything else we can use?
-	# "More cards... I'll see what I can find! In the mean time, I suppose I can ask the other townspeople to help 
-	# 	put up some barricades?"
-	# > Thank you. I'll do what I can to hold off the hordes.
-	# "G- godspeed!" [scurries off. Barricades interface appears. After placing, the next round begins]
-	# [cards are thereafter awarded randomly from the Wild Townspeople set. Then the 'closing the portal' mission begins]
-
-# TODO:
-	# = BUGFIX: arrows fly while paused / various animation cancels (fast spinning duck). n.b.
-		# pausing at the wrong time causes hundreds of dogs to spawn (!!)
-	# 
-	# -> move inline coded dialogue to a data file
-	# -> add proper logging
-	#
-	# --- PHASE 1) Basic game mechanics
-	# - improve card menu and add more cards
-	# - add more enemies and bigger waves
-	# - add more card options and do nicer card art 
-	# - add more tower types (magic,fire,ranger,bomb,poison)
-	# - give towers more prioritising options (furthest forward, closest, highest hp etc)
-	# - make enemies 'pop' (coin scatter animation?) and improve tile placement (animation, sfx)
-	# - confine mouse to window edges and move the camera when it hits an edge
-	# - procedurally generate paths and have enemies follow path? or add more interesting pathfinding
-	# - wave splashscreen/nice HUD texture
-	#
-	# --- PHASE 2) Story & progression
-	# - add in all dialogue & character sprites
-	# - improve pause menu and add save/load functionality (steam cloud sync?)
-	# - make and add some music!
-	# - implement missions (only a few, for the main story sections)
-	# - improve progression display and splashes/notifiers for mission/wave progress
-	# - add more terrain/some random plant sprites
-	# - update enemy, tower, and castle models
-	# - add pond and wandering ducks
-	# - make 'springy' buttons and icons (give UI elements conservable momentum)
-	#
-	# --- PHASE 3) Ending & finishing touches
-	# - procedural spawning of walls and building models between towers and castle
-	# - 'evil mode' game state transition, general colour management and filtering shaders
-	# - game menu, splash screen, and loading screens
-	# - particle atmosphere: random leaves, dots, streaks, rain etc
-	# - fill out assets:
-		# -> enemies
-		# -> allies
-		# -> buildings
-		# -> music
-		# -> sfx
-		# -> fx/animations/effect shaders
-		# -> set dressing / props
-		# -> card art
-		# -> buttons/menu textures
-	# - distribution build
+# this might only be called when fsm enters 'Gameplay'
+def resumeAllSequences() -> bool:
+	# try
+	base.fsm.waveSchedule.resume()
+	if (base.spawnSeq != None):
+		base.spawnSeq.resume()
+	for enemy in base.enemies:
+		enemy.moveSeq.resume()
+	for tower in base.towers:
+		tower.scanSeq.resume()
+	# except
+	return True		
 
 class TileModification():
 	def __init__(self, name, effect, duration=0) -> None:
@@ -209,13 +128,7 @@ class GamestateFSM(FSM):
 
 	def enterGameplay(self) -> None:
 		# resume sequences 
-		self.waveSchedule.resume()
-		if (base.spawnSeq != None):
-			base.spawnSeq.resume()
-		for enemy in base.enemies:
-			enemy.moveSeq.resume()
-		for tower in base.towers:
-			tower.scanSeq.resume()
+		resumeAllSequences()
 
 		base.ui.pauseButton.show()
 		base.ui.playButton.hide()
@@ -227,13 +140,7 @@ class GamestateFSM(FSM):
 
 	def enterPause(self) -> None:
 		# pause sequences
-		self.waveSchedule.pause()
-		if (base.spawnSeq != None):
-			base.spawnSeq.pause()
-		for enemy in base.enemies:
-			enemy.moveSeq.pause()
-		for tower in base.towers:
-			tower.scanSeq.pause()
+		pauseAllSequences()
 		# show pause state with dimmed screen and changing pause iconbase.textCardMaker.setFrameFullscreenQuad()
 		self.pauseFade = render2d.attachNewNode(base.textCardMaker.generate())
 		self.pauseFade.setTransparency(1)
@@ -258,13 +165,7 @@ class GamestateFSM(FSM):
 
 	def enterCardMenu(self) -> None:
 		# pause sequences
-		self.waveSchedule.pause()
-		if (base.spawnSeq != None):
-			base.spawnSeq.pause()
-		for enemy in base.enemies:
-			enemy.moveSeq.pause()
-		for tower in base.towers:
-			tower.scanSeq.pause()
+		pauseAllSequences()
 		# arrows still don't pause in-flight; is another for loop the right answer, or can
 		# 	i have the sequences all checking if the fsm.state == 'Gameplay' before continuing,
 		# 	and suspend until it reaches that state. Sequences can't unpause themselves tho:/
@@ -286,13 +187,7 @@ class GamestateFSM(FSM):
 	def enterPickTower(self) -> None: 
 		# enable toggle to tell updates to listen for clicks and run mouseray collider
 		# maybe start a task for the tower picker?
-		self.waveSchedule.pause()
-		if (base.spawnSeq != None):
-			base.spawnSeq.pause()
-		for enemy in base.enemies:
-			enemy.moveSeq.pause()
-		for tower in base.towers:
-			tower.scanSeq.pause()
+		pauseAllSequences()
 		# make the highlight for the tile picker visible
 		#base.highlightTile.setTexture(pickHighlight)
 		base.highlightTile.show()
@@ -305,13 +200,7 @@ class GamestateFSM(FSM):
 	# Pick Upgrade Tower
 
 	def enterPickUpgradeTower(self) -> None:
-		self.waveSchedule.pause()
-		if (base.spawnSeq != None):
-			base.spawnSeq.pause()
-		for enemy in base.enemies:
-			enemy.moveSeq.pause()
-		for tower in base.towers:
-			tower.scanSeq.pause()
+		pauseAllSequences()
 		# make the highlight for the tile picker visible
 		#base.highlightTile.setTexture(upgradeHighlight)
 		base.highlightTile.show()
@@ -325,9 +214,7 @@ class GamestateFSM(FSM):
 
 	def enterGameOver(self) -> None:
 		# pause sequences
-		self.waveSchedule.pause()
-		for enemy in base.enemies:
-			enemy.move.pause()
+		pauseAllSequences()
 		if base.ui.gameOverScreen.isHidden():
 			base.ui.gameOverScreen.show()
 
@@ -340,13 +227,7 @@ class GamestateFSM(FSM):
 
 	def enterDialogue(self) -> None:
 		# pause sequences
-		self.waveSchedule.pause()
-		if (base.spawnSeq != None):
-			base.spawnSeq.pause()
-		for enemy in base.enemies:
-			enemy.moveSeq.pause()
-		for tower in base.towers:
-			tower.scanSeq.pause()
+		pauseAllSequences()
 
 		base.ui.pauseButton.hide()
 		base.ui.playButton.hide()
@@ -387,7 +268,8 @@ class GamestateFSM(FSM):
 		self.inDialogue = True
 		self.dialogueStep = 0
 		
-		self.dialogueTextNP = base.ui.drawText(base.dialogue[self.dialogueStep])
+		# TODO update this to use the appropriate dialogue
+		self.dialogueTextNP = base.ui.drawText(base.dialogue["opening"][self.dialogueStep])
 		#wait for user to click
 		self.clickWaiting = True
 
@@ -455,12 +337,7 @@ class DuckOfCards(ShowBase):
 		#self.tileMap.ls()
 
 		# n.b. this is part of the opening cutscene as a placeholder for the final dialogue data
-		self.dialogue: list[str] = ["QUACK! I mean QUICK! Attackers are at the gates!\nThere's no time to explain- you, traveller!",
-							"> ...", "Yes, you! What's your name?", 
-							"Wait- there's no TIME! Take this;\nit is one of my fine and valuable magic cards.",
-							"It will summon a magical tower to defend\nthe innocent ducks of the pond\nwherever you place it.",
-							"Place it carefully and fight back these\nmerciless attackers who would make\nMINCEMEAT of us!",
-							"What are you waiting for?!\nBEGONE! BWAAACK- WACK wack..."]
+		self.dialogue: dict[list[str]] = json.load("assets/Dialogue.json")
 		self.dialogueStates: list[DialogueState] = [DialogueState(3,Sequence(Func(self.offerCard))),
 								DialogueState(4,Sequence(Func(self.takeOfferedCard)))]
 		self.textCardMaker: CardMaker = CardMaker('textScreen')
@@ -836,7 +713,8 @@ class DuckOfCards(ShowBase):
 				# we then step forward the dialogue counter
 				self.fsm.dialogueStep += 1
 				# and check if the dialogue is at the end of the array (completed)
-				if (self.fsm.dialogueStep < len(self.dialogue)): 
+				# TODO update this to use the appropriate dialogue
+				if (self.fsm.dialogueStep < len(self.dialogue["opening"])): 
 					# procede to next step of dialogue 
 					self.fsm.stepDialogue()
 					for ds in self.dialogueStates:

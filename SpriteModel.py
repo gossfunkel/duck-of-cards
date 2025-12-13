@@ -44,12 +44,6 @@ class SpriteMod(FSM):
 		#base.taskMgr.add(self.update, "update_"+str(self.node), taskChain='default')
 		# locate this task in base.taskMgr to modify it, or overload update() in subclass
 
-	# def update(self, task) -> int:
-	# 	#if base.fsm.state == 'Gameplay':
-	# 		#move
-	# 	self.still = False if self.speed else True
-	# 	return task.cont
-
 	def defaultFilter(self, request, args) -> str:
 		return 'BottomRight'
 
